@@ -1,0 +1,102 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Customers - ENQOVA POS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex; justify-content:center; align-items:center; padding: 20px 10px; height: auto;">
+      <img src="/img/logo.png" style="max-width:100%; max-height:140px;" alt="ENQOVA">
+    </div>
+                <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard.html" class="nav-item">Dashboard</a>
+      <a href="/pos.html" class="nav-item">POS / Billing</a>
+      <a href="/invoices.html" class="nav-item">Invoice</a>
+      <a href="/quotations.html" class="nav-item">Quotations</a>
+      <div class="nav-section-label">Inventory</div>
+      <a href="/products.html" class="nav-item">Products</a>
+      <a href="/grn.html" class="nav-item">GRN</a>
+      <a href="/transfers.html" class="nav-item">Transfers</a>
+      <div class="nav-section-label">CRM</div>
+      <a href="/customers.html" class="nav-item active">Customers</a>
+      <a href="/warranties.html" class="nav-item">Warranty <span class="nav-badge" id="navWarrantyBadge" style="display:none">0</span></a>
+      <a href="/service.html" class="nav-item">Service Center</a>
+      <a href="/jobsheets.html" class="nav-item">Job Sheets</a>
+      <div class="nav-section-label">Business</div>
+      <a href="/reports.html" class="nav-item">Reports</a>
+      <a href="/users.html" class="nav-item" id="navUsers">Users</a>
+      <a href="/settings.html" class="nav-item">Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="user-avatar" id="userAvatar">A</div><div class="user-details"><div class="user-name" id="userName">Admin</div><div class="user-role" id="userRole">admin</div></div></div>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px; margin-bottom:8px; border:1px solid var(--border);" onclick="toggleTheme()">☀️ / 🌙 Toggle Theme</button>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px;" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+  <div class="main-content">
+    <header class="top-header">
+      <div><div class="header-title">👥 Customers</div></div>
+      <div class="header-actions">
+        <span class="branch-badge" id="headerBranch"></span>
+        <button class="btn btn-primary" onclick="openAddCustomer()">+ Add Customer</button>
+      </div>
+    </header>
+    <div class="page-body">
+      <div class="filter-bar">
+        <div class="search-bar" style="flex:1;"><span class="search-icon">🔍</span><input type="text" class="form-control" id="searchInput" placeholder="Search by name, phone, NIC, code..." oninput="debounce(loadCustomers,400)()"></div>
+        <select class="form-control" id="typeFilter" onchange="loadCustomers()" style="max-width:150px;"><option value="">All Types</option><option value="retail">Retail</option><option value="wholesale">Wholesale</option></select>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ Export</button>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead><tr><th>Code</th><th>Name</th><th>Phone</th><th>NIC</th><th>Type</th><th>Balance</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="customersTbody"></tbody>
+        </table>
+      </div>
+      <div id="pagination"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Customer Modal -->
+<div class="modal-overlay" id="customerModal">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title" id="custModalTitle">Add Customer</div><button class="modal-close" onclick="closeModal('customerModal')">✕</button></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label required">Full Name</label><input type="text" class="form-control" id="c_name"></div>
+      <div class="form-group"><label class="form-label">Phone Number</label><input type="text" class="form-control" id="c_phone"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">NIC Number</label><input type="text" class="form-control" id="c_nic"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" id="c_email"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Customer Type</label><select class="form-control" id="c_type"><option value="retail">Retail</option><option value="wholesale">Wholesale</option></select></div>
+      <div class="form-group"><label class="form-label">Credit Limit (Rs.)</label><input type="number" class="form-control" id="c_credit" value="0" min="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Address</label><textarea class="form-control" id="c_address" rows="2"></textarea></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="c_notes" rows="2"></textarea></div>
+    <input type="hidden" id="c_id">
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('customerModal')">Cancel</button><button class="btn btn-primary" onclick="saveCustomer()">Save Customer</button></div>
+  </div>
+</div>
+
+<!-- Customer Detail Modal -->
+<div class="modal-overlay" id="customerDetailModal">
+  <div class="modal modal-xl">
+    <div class="modal-header"><div class="modal-title" id="custDetailTitle">Customer Details</div><button class="modal-close" onclick="closeModal('customerDetailModal')">✕</button></div>
+    <div id="custDetailContent"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('customerDetailModal')">Close</button></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script src="/js/customers.js"></script>
+</body>
+</html>

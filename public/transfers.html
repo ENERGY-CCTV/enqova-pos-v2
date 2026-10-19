@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Transfers - ENQOVA POS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex; justify-content:center; align-items:center; padding: 20px 10px; height: auto;">
+      <img src="/img/logo.png" style="max-width:100%; max-height:140px;" alt="ENQOVA">
+    </div>
+                <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard.html" class="nav-item">Dashboard</a>
+      <a href="/pos.html" class="nav-item">POS / Billing</a>
+      <a href="/invoices.html" class="nav-item">Invoice</a>
+      <a href="/quotations.html" class="nav-item">Quotations</a>
+      <div class="nav-section-label">Inventory</div>
+      <a href="/products.html" class="nav-item">Products</a>
+      <a href="/grn.html" class="nav-item">GRN</a>
+      <a href="/transfers.html" class="nav-item active">Transfers</a>
+      <div class="nav-section-label">CRM</div>
+      <a href="/customers.html" class="nav-item">Customers</a>
+      <a href="/warranties.html" class="nav-item">Warranty <span class="nav-badge" id="navWarrantyBadge" style="display:none">0</span></a>
+      <a href="/service.html" class="nav-item">Service Center</a>
+      <a href="/jobsheets.html" class="nav-item">Job Sheets</a>
+      <div class="nav-section-label">Business</div>
+      <a href="/reports.html" class="nav-item">Reports</a>
+      <a href="/users.html" class="nav-item" id="navUsers">Users</a>
+      <a href="/settings.html" class="nav-item">Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="user-avatar" id="userAvatar">A</div><div class="user-details"><div class="user-name" id="userName">Admin</div><div class="user-role" id="userRole">admin</div></div></div>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px; margin-bottom:8px; border:1px solid var(--border);" onclick="toggleTheme()">☀️ / 🌙 Toggle Theme</button>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px;" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+  <div class="main-content">
+    <header class="top-header">
+      <div><div class="header-title">🔄 Branch Stock Transfers</div></div>
+      <div class="header-actions"><span class="branch-badge" id="headerBranch"></span><button class="btn btn-primary" onclick="openCreateTransfer()">+ New Transfer</button></div>
+    </header>
+    <div class="page-body">
+      <div class="filter-bar">
+        <select class="form-control" id="statusFilter" onchange="loadTransfers()" style="max-width:160px;"><option value="">All Status</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="completed">Completed</option><option value="rejected">Rejected</option></select>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead><tr><th>Transfer #</th><th>From Branch</th><th>To Branch</th><th>Date</th><th>Status</th><th>Requested By</th><th>Actions</th></tr></thead>
+          <tbody id="transfersTbody"></tbody>
+        </table>
+      </div>
+      <div id="pagination"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Transfer Modal -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal modal-xl">
+    <div class="modal-header"><div class="modal-title" id="transferModalTitle">🔄 New Branch Transfer</div><button class="modal-close" onclick="closeModal('transferModal')">✕</button></div>
+    <input type="hidden" id="edit_transfer_id">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label required">From Branch</label><select class="form-control" id="t_from"></select></div>
+      <div class="form-group"><label class="form-label required">To Branch</label><select class="form-control" id="t_to"></select></div>
+      <div class="form-group"><label class="form-label">Transfer Date</label><input type="date" class="form-control" id="t_date"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-control" id="t_notes" placeholder="Reason for transfer..."></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="card-title">Transfer Items</div>
+      <button class="btn btn-secondary btn-sm" onclick="addTransferRow()">+ Add Item</button>
+    </div>
+    <div class="table-wrapper" style="max-height:320px;overflow-y:auto;">
+      <table class="data-table">
+        <thead><tr><th>Product</th><th>Available Stock</th><th>Qty to Transfer</th><th>Serial Numbers (one per line)</th><th></th></tr></thead>
+        <tbody id="transferItemsTbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('transferModal')">Cancel</button><button class="btn btn-warning" id="transferSubmitBtn" onclick="submitTransfer()">📤 Submit Transfer Request</button></div>
+  </div>
+</div>
+
+<!-- View Transfer Modal -->
+<div class="modal-overlay" id="viewTransferModal">
+  <div class="modal modal-xl">
+    <div class="modal-header"><div class="modal-title" id="viewTransferTitle">Transfer Details</div><button class="modal-close" onclick="closeModal('viewTransferModal')">✕</button></div>
+    <div id="viewTransferContent"></div>
+    <div class="modal-footer" id="viewTransferFooter"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script src="/js/transfers.js"></script>
+</body>
+</html>

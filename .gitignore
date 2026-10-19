@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Cloudflare & local executables
+cloudflared.exe
+*.exe
+
+# SQL dumps and backups (prevents leaking credentials to GitHub)
+*.sql
+public/*.sql
+backups/
+*.zip
+
+# System and logs
+.system_generated/
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+
+# SQLite WAL and SHM temp files
+data/*.db-wal
+data/*.db-shm

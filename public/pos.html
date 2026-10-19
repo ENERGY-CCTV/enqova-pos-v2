@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>POS / Billing - ENQOVA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/pos.css">
+  <link rel="stylesheet" href="/css/print.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex; justify-content:center; align-items:center; padding: 20px 10px; height: auto;">
+      <img src="/img/logo.png" style="max-width:100%; max-height:140px;" alt="ENQOVA">
+    </div>
+                <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard.html" class="nav-item">Dashboard</a>
+      <a href="/pos.html" class="nav-item active">POS / Billing</a>
+      <a href="/invoices.html" class="nav-item">Invoice</a>
+      <a href="/quotations.html" class="nav-item">Quotations</a>
+      <div class="nav-section-label">Inventory</div>
+      <a href="/products.html" class="nav-item">Products</a>
+      <a href="/grn.html" class="nav-item">GRN</a>
+      <a href="/transfers.html" class="nav-item">Transfers</a>
+      <div class="nav-section-label">CRM</div>
+      <a href="/customers.html" class="nav-item">Customers</a>
+      <a href="/warranties.html" class="nav-item">Warranty <span class="nav-badge" id="navWarrantyBadge" style="display:none">0</span></a>
+      <a href="/service.html" class="nav-item">Service Center</a>
+      <a href="/jobsheets.html" class="nav-item">Job Sheets</a>
+      <div class="nav-section-label">Business</div>
+      <a href="/reports.html" class="nav-item">Reports</a>
+      <a href="/users.html" class="nav-item" id="navUsers">Users</a>
+      <a href="/settings.html" class="nav-item">Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="user-avatar" id="sidebarAvatar">A</div><div class="user-details"><div class="user-name" id="sidebarUserName">Admin</div><div class="user-role" id="sidebarUserRole">admin</div></div></div>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px; margin-bottom:8px; border:1px solid var(--border);" onclick="toggleTheme()">☀️ / 🌙 Toggle Theme</button>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px;" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content" style="margin-left:var(--sidebar-w);">
+    <header class="top-header">
+      <div><div class="header-title">🛒 POS - New Invoice</div></div>
+      <div class="header-actions">
+        <span class="branch-badge" id="headerBranch">Branch</span>
+        <button class="btn btn-secondary btn-sm" onclick="clearCart()">🗑 Clear Cart</button>
+        <button class="btn btn-ghost btn-sm" onclick="location.href='/dashboard.html'">← Back</button>
+      </div>
+    </header>
+
+    <div class="pos-layout">
+      <!-- LEFT: Product Search + Cart -->
+      <div class="pos-left">
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Quick Add</div>
+          <style>.pos-quick-card:hover { border-color: var(--accent) !important; background: rgba(0, 212, 255, 0.08) !important; transform: translateY(-1px); }</style>
+          <div id="ezvizQuickAdd" style="display: flex; flex-direction: column; flex-wrap: wrap; height: 210px; overflow-x: auto; gap: 6px; padding-bottom: 5px; scrollbar-width: thin;">
+            <div style="font-size: 12px; color: var(--text-muted);">Loading Quick Add products...</div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="pos-search-bar">
+          <div class="pos-search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="productSearch" placeholder="Search product by name, brand, model, SKU..." autocomplete="off" oninput="searchProducts(this.value)">
+          </div>
+        </div>
+        <!-- Search Results -->
+        <div class="product-results hidden" id="productResults"></div>
+        <!-- Cart -->
+        <div class="cart-section">
+          <div class="cart-header">
+            <h3>🛒 Cart <span id="cartCount" style="color:var(--accent);">(0)</span></h3>
+            <span style="font-size:12px;color:var(--text-secondary);" id="cartBranchLabel"></span>
+          </div>
+          <div id="cartEmpty" class="cart-empty"><span style="font-size:32px;">🛒</span><span>Cart is empty — search and add products</span></div>
+          <div id="cartTableWrap" style="display:none;">
+            <table class="cart-table">
+              <thead><tr><th></th><th>Product</th><th>Serials</th><th>Qty</th><th>Unit Price</th><th>Disc%</th><th>Total</th><th></th></tr></thead>
+              <tbody id="cartBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Totals -->
+        <div class="cart-totals">
+          <div class="total-row"><span>Subtotal</span><span id="subtotal">Rs. 0.00</span></div>
+          <div class="total-row discount"><span>Discount</span><span id="totalDiscount">- Rs. 0.00</span></div>
+          <div class="total-row vat"><span>VAT (18%)</span><span id="totalVat">Rs. 0.00</span></div>
+          <div class="total-row total-final"><span>TOTAL</span><span id="grandTotal">Rs. 0.00</span></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Customer + Payment -->
+      <div class="pos-right">
+        <div class="pos-right-scroll">
+          <!-- Customer -->
+          <div class="pos-section">
+            <div class="pos-section-title">👤 Customer</div>
+            <div class="search-bar" style="margin-bottom:8px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="form-control" id="customerSearch" placeholder="Search customer..." oninput="searchCustomers(this.value)" autocomplete="off">
+            </div>
+            <div class="customer-search-result" id="customerResults"></div>
+            <div class="selected-customer" id="selectedCustomer" style="display:none;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div><div class="cust-name" id="selCustName"></div><div class="cust-info" id="selCustInfo"></div></div>
+                <button onclick="clearCustomer()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;">✕</button>
+              </div>
+            </div>
+
+            <button class="btn btn-ghost btn-sm w-100 mt-8" onclick="openAddCustomer()" style="font-size:12px;">+ Quick Add Customer</button>
+          </div>
+
+          <!-- Discount -->
+          <div class="pos-section">
+            <div class="pos-section-title">🏷 Discount</div>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Discount %</label>
+                <input type="number" class="form-control" id="discountPct" min="0" max="100" placeholder="0" oninput="recalcTotals()">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Fixed Disc (Rs.)</label>
+                <input type="number" class="form-control" id="discountAmt" min="0" placeholder="0" oninput="recalcTotals()">
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment -->
+          <div class="pos-section">
+            <div class="pos-section-title">💳 Payment</div>
+            <div class="payment-methods" style="margin-bottom:12px;">
+              <button class="pay-method-btn active" id="pm-cash" onclick="setPayMethod('cash')">💵 Cash</button>
+              <button class="pay-method-btn" id="pm-card" onclick="setPayMethod('card')">💳 Card</button>
+              <button class="pay-method-btn" id="pm-credit" onclick="setPayMethod('credit')">🏦 Credit</button>
+              <button class="pay-method-btn" id="pm-online" onclick="setPayMethod('online')">🌐 Online Transfer</button>
+              <button class="pay-method-btn" id="pm-koko" onclick="setPayMethod('koko')">🥥 KOKO</button>
+              <button class="pay-method-btn" id="pm-mixed" onclick="setPayMethod('mixed')">🔀 Mixed</button>
+            </div>
+            <div class="form-group" id="kokoChargeGroup" style="display:none; background:#fff3cd; padding:10px; border-radius:6px; border:1px solid #ffe69c;">
+              <label class="form-label" style="color:#856404; font-weight:bold;">Promotional Discount Removal (Rs.)</label>
+              <input type="number" class="form-control" id="kokoChargeAmt" placeholder="0" oninput="recalcTotals()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount Paid (Rs.)</label>
+              <input type="number" class="form-control" id="amountPaid" placeholder="0.00" oninput="calcChange()">
+            </div>
+            <div class="change-display" id="changeDisplay" style="display:none;">
+              <span>Change</span><span class="change-amount" id="changeAmount">Rs. 0.00</span>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="pos-section">
+            <div class="pos-section-title">📝 Notes</div>
+            <textarea class="form-control" id="invoiceNotes" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+
+        <!-- Create Invoice -->
+        <div class="pos-footer">
+          <button class="btn-create-invoice" id="createInvBtn" onclick="createInvoice()" disabled>
+            ✅ Create Invoice
+          </button>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-secondary" id="saveDraftBtn" onclick="saveDraft()" disabled style="flex:1;font-size:12px;padding:8px;">
+              💾 Save Draft
+            </button>
+            <button class="btn btn-ghost" onclick="loadDrafts()" style="flex:1;font-size:12px;padding:8px;">
+              📂 Load Draft
+            </button>
+          </div>
+          <button class="btn btn-warning w-100 mt-8" id="saveQuoteBtn" onclick="saveAsQuotation()" disabled style="font-size:13px;padding:10px;font-weight:600;">
+            📄 Save as Quotation
+          </button>
+          <button class="btn w-100 mt-8" id="saveProformaBtn" onclick="saveAsProforma()" disabled style="font-size:13px;padding:10px;font-weight:600;background:linear-gradient(135deg, #833471, #b33771);color:#fff;border:none;">
+            📄 Save as Proforma
+          </button>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-ghost w-100" style="font-size:12px;padding:8px;" id="printLastBtn" onclick="printLastInvoice()">🖨 Print</button>
+            <button class="btn btn-secondary w-100" style="font-size:12px;padding:8px;background:#25D366;color:#fff;border:none;" id="waBtn" onclick="sendWhatsAppInvoice()">📲 WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Serial Number Modal -->
+<div class="modal-overlay" id="serialModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📟 Enter Serial Numbers</div>
+      <button class="modal-close" onclick="closeModal('serialModal')">✕</button>
+    </div>
+    <div id="serialModalContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('serialModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSerials()">Save Serials</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div class="modal-overlay" id="addCustomerModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">👤 Add New Customer</div><button class="modal-close" onclick="closeModal('addCustomerModal')">✕</button></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label required">Full Name</label><input type="text" class="form-control" id="nc_name"></div>
+      <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-control" id="nc_phone"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">NIC</label><input type="text" class="form-control" id="nc_nic"></div>
+      <div class="form-group" style="display: none;"><label class="form-label">Type</label><select class="form-control" id="nc_type"><option value="wholesale" selected>Wholesale</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Address</label><textarea class="form-control" id="nc_address" rows="2"></textarea></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addCustomerModal')">Cancel</button><button class="btn btn-primary" onclick="saveNewCustomer()">Save Customer</button></div>
+  </div>
+</div>
+
+<!-- Invoice Success Modal -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:64px;margin-bottom:16px;">✅</div>
+    <div class="modal-title" style="font-size:20px;margin-bottom:8px;">Invoice Created!</div>
+    <div id="successInvNumber" style="color:var(--accent);font-size:18px;font-weight:700;margin-bottom:16px;"></div>
+    <div id="successTotal" style="font-size:24px;font-weight:800;color:var(--green);margin-bottom:20px;"></div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-secondary" onclick="closeModal('successModal');clearCart();">New Invoice</button>
+      <button class="btn btn-primary" onclick="printCurrentInvoice()">🖨 Print Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Draft Modal -->
+<div class="modal-overlay" id="draftModal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <div class="modal-title">📂 Load Saved Draft</div>
+      <button class="modal-close" onclick="closeModal('draftModal')">✕</button>
+    </div>
+    <div id="draftList" style="max-height:50vh;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('draftModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script src="/js/pos.js"></script>
+</body>
+</html>

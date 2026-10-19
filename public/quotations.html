@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Quotations - ENQOVA POS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex; justify-content:center; align-items:center; padding: 20px 10px; height: auto;">
+      <img src="/img/logo.png" style="max-width:100%; max-height:140px;" alt="ENQOVA">
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard.html" class="nav-item">Dashboard</a>
+      <a href="/pos.html" class="nav-item">POS / Billing</a>
+      <a href="/invoices.html" class="nav-item">Invoice</a>
+      <a href="/quotations.html" class="nav-item active">Quotations</a>
+      <div class="nav-section-label">Inventory</div>
+      <a href="/products.html" class="nav-item">Products</a>
+      <a href="/grn.html" class="nav-item">GRN</a>
+      <a href="/transfers.html" class="nav-item">Transfers</a>
+      <div class="nav-section-label">CRM</div>
+      <a href="/customers.html" class="nav-item">Customers</a>
+      <a href="/warranties.html" class="nav-item">Warranty <span class="nav-badge" id="navWarrantyBadge" style="display:none">0</span></a>
+      <a href="/service.html" class="nav-item">Service Center</a>
+      <a href="/jobsheets.html" class="nav-item">Job Sheets</a>
+      <div class="nav-section-label">Business</div>
+      <a href="/reports.html" class="nav-item">Reports</a>
+      <a href="/users.html" class="nav-item" id="navUsers">Users</a>
+      <a href="/settings.html" class="nav-item">Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="user-avatar" id="sidebarAvatar">A</div><div class="user-details"><div class="user-name" id="sidebarUserName">Admin</div><div class="user-role" id="sidebarUserRole">admin</div></div></div>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px; margin-bottom:8px; border:1px solid var(--border);" onclick="toggleTheme()">☀️ / 🌙 Toggle Theme</button>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px;" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="top-header">
+      <div>
+        <div class="header-title">Quotations</div>
+        <div class="header-breadcrumb">Manage & create price quotations for customers</div>
+      </div>
+      <div class="header-actions">
+        <span class="branch-badge" id="headerBranch">Branch</span>
+        <button class="btn btn-primary" onclick="openNewQuotationModal()">+ New Quotation</button>
+      </div>
+    </header>
+
+    <div class="page-body">
+      <!-- Stats Row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+        <div class="stat-card"><div class="stat-icon blue"></div><div><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total Quotations</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value" id="statPending">0</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value" id="statConverted">0</div><div class="stat-label">Converted</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">❌</div><div><div class="stat-value" id="statRejected">0</div><div class="stat-label">Rejected / Expired</div></div></div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div class="search-bar" style="flex:1;min-width:200px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search quotation# or customer..." oninput="debounceLoad()" class="form-control">
+          </div>
+          <select id="statusFilter" class="form-control" style="width:160px;" onchange="loadQuotations(1)">
+            <option value="">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="expired">Expired</option>
+            <option value="converted">Converted</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadQuotations(1)">🔍 Filter</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Quotation #</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Valid Until</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="quotationsTbody">
+              <tr><td colspan="7" class="text-center text-muted" style="padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="pagination" style="display:flex;align-items:center;gap:4px;padding:12px 16px;border-top:1px solid var(--border);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- CREATE NEW QUOTATION MODAL (NO SERIALS NEEDED)  -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="newQuotationModal">
+  <div class="modal" style="max-width:920px;width:96%;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" style="font-size:18px;display:flex;align-items:center;gap:8px;">
+          <span></span> Create New Quotation
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+          Generate quotation without serial numbers or inventory deduction
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('newQuotationModal')">✕</button>
+    </div>
+
+    <div style="max-height:72vh;overflow-y:auto;padding-right:6px;">
+      <!-- Customer Information Section -->
+      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">👤 Customer Details</span>
+          <span style="font-size:11px;color:var(--text-muted);">Pick existing or type customer info</span>
+        </div>
+
+        <!-- Customer Search Autocomplete -->
+        <div style="position:relative;margin-bottom:12px;">
+          <div class="search-bar" style="position:relative;">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="form-control" id="newQuoCustSearch" placeholder="Search existing customer by name, phone, or code..." oninput="searchNewQuoCustomers(this.value)" autocomplete="off">
+          </div>
+          <div id="newQuoCustResults" style="position:absolute;top:100%;left:0;right:0;z-index:1050;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px;display:none;background:var(--bg-card,#12182b);box-shadow:0 8px 24px rgba(0,0,0,0.5);max-height:220px;overflow-y:auto;"></div>
+        </div>
+
+        <input type="hidden" id="new_cust_id" value="">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label required">Customer Name</label>
+            <input type="text" class="form-control" id="new_cust_name" placeholder="Customer name or business" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Phone Number</label>
+            <input type="text" class="form-control" id="new_cust_phone" placeholder="e.g. 0771234567">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Address</label>
+            <input type="text" class="form-control" id="new_cust_address" placeholder="Address (optional)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Dates & Branch -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Quotation Date</label>
+          <input type="date" class="form-control" id="new_date">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Valid Until</label>
+          <input type="date" class="form-control" id="new_valid_until">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Branch</label>
+          <select class="form-control" id="new_branch_id"></select>
+        </div>
+      </div>
+
+      <!-- Add Products / Items Section -->
+      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;">📦 Quotation Items (No Serials Required)</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addNewQuoCustomItem()" style="font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:4px;">
+            <span>➕</span> Add Custom / Service Item
+          </button>
+        </div>
+
+        <!-- Product Search from Inventory -->
+        <div style="position:relative;margin-bottom:12px;">
+          <div class="search-bar" style="position:relative;">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="form-control" id="newProductSearch" placeholder="Search product from inventory (cameras, DVRs, accessories)..." oninput="searchNewQuoProducts(this.value)" autocomplete="off">
+          </div>
+          <div id="newProductResults" style="position:absolute;top:100%;left:0;right:0;z-index:1050;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px;display:none;background:var(--bg-card,#12182b);box-shadow:0 8px 24px rgba(0,0,0,0.5);max-height:240px;overflow-y:auto;"></div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="table-wrapper" style="margin-bottom:0;max-height:280px;overflow-y:auto;">
+          <table class="data-table" id="newItemsTable">
+            <thead>
+              <tr>
+                <th style="min-width:220px;">Item / Description</th>
+                <th style="width:75px;text-align:center;">Warranty</th>
+                <th style="width:70px;text-align:center;">Qty</th>
+                <th style="width:115px;text-align:right;">Unit Price (Rs.)</th>
+                <th style="width:115px;text-align:right;">Total (Rs.)</th>
+                <th style="width:40px;text-align:center;"></th>
+              </tr>
+            </thead>
+            <tbody id="newItemsTbody">
+              <tr><td colspan="7" class="text-center text-muted" style="padding:24px;">No items added yet. Search inventory above or click "Add Custom / Service Item".</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pricing, Discounts, VAT & Summary -->
+      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:14px;">
+        <div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0; width:100%;">
+              <label class="form-label">Discount (Rs.)</label>
+              <input type="number" class="form-control" id="new_disc_amt" min="0" placeholder="0" oninput="newQuoRecalc()">
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;">
+            <input type="checkbox" id="new_apply_vat" onchange="newQuoRecalc()" style="width:18px;height:18px;cursor:pointer;">
+            <label for="new_apply_vat" style="font-size:12px;font-weight:600;cursor:pointer;margin-bottom:0;">Apply VAT (18%) to this Quotation</label>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Notes & Terms</label>
+            <textarea class="form-control" id="new_notes" rows="2" placeholder="e.g. Quotation valid for 30 days. Standard manufacturer warranty applies. 50% advance required for installation."></textarea>
+          </div>
+        </div>
+
+        <!-- Totals summary box -->
+        <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Quotation Summary</div>
+            <div style="display:none;justify-content:space-between;margin-bottom:6px;font-size:13px;"><span>Subtotal</span><span id="newSumSubtotal">Rs. 0.00</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--orange);"><span>Discount</span><span id="newSumDiscount">- Rs. 0.00</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;"><span>VAT (18%)</span><span id="newSumVat">Rs. 0.00</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:18px;color:var(--accent);border-top:1px solid rgba(0,212,255,0.25);padding-top:10px;margin-top:10px;">
+            <span>GRAND TOTAL</span>
+            <span id="newSumGrandTotal">Rs. 0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('newQuotationModal')">Cancel</button>
+      <button class="btn btn-ghost" onclick="saveNewQuotation(true)">🖨 Save & Print</button>
+      <button class="btn btn-primary" onclick="saveNewQuotation(false)">💾 Save Quotation</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- CONVERT TO INVOICE MODAL                       -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="convertModal">
+  <div class="modal" style="max-width:480px;width:95%;">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Convert Quotation to Invoice</div>
+      <button class="modal-close" onclick="closeModal('convertModal')">✕</button>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center;">
+        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">Quotation Amount</div>
+        <div id="convTotal" style="font-size:22px;font-weight:800;color:var(--accent);margin-top:4px;">Rs. 0.00</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Payment Method</label>
+        <select class="form-control" id="convPayMethod">
+          <option value="cash">💵 Cash</option>
+          <option value="card">💳 Card</option>
+          <option value="credit">🏦 Credit</option>
+          <option value="online">🌐 Online Transfer</option>
+          <option value="koko">🥥 KOKO</option>
+          <option value="mixed">🔀 Mixed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount Paid (Rs.)</label>
+        <input type="number" class="form-control" id="convAmountPaid" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('convertModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmConvert()">✅ Convert & Create Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- VIEW QUOTATION MODAL                           -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal" style="max-width:820px;width:95%;">
+    <div class="modal-header">
+      <div class="modal-title" id="viewModalTitle">Quotation Details</div>
+      <button class="modal-close" onclick="closeModal('viewModal')">✕</button>
+    </div>
+    <div id="viewModalContent" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-footer" id="viewModalFooter"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- EDIT QUOTATION MODAL                           -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal" style="max-width:860px;width:96%;">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Quotation — <span id="editQuoNum"></span></div>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div style="max-height:70vh;overflow-y:auto;padding-bottom:8px;">
+      <!-- Customer & Meta -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Customer Name</label>
+          <input type="text" class="form-control" id="edit_cust_name" placeholder="Customer name">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Customer Phone</label>
+          <input type="text" class="form-control" id="edit_cust_phone" placeholder="Phone number">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Customer Address</label>
+          <input type="text" class="form-control" id="edit_cust_address" placeholder="Address">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Valid Until</label>
+          <input type="date" class="form-control" id="edit_valid_until">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Status</label>
+          <select class="form-control" id="edit_status">
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;grid-column:span 3;">
+          <label class="form-label">Notes</label>
+          <textarea class="form-control" id="edit_notes" rows="2" placeholder="Optional notes..."></textarea>
+        </div>
+      </div>
+
+      <!-- Add Product Search & Custom Item -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label class="form-label" style="margin-bottom:0;">Add Products / Items</label>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addEditQuoCustomItem()" style="font-size:11px;padding:3px 10px;">
+            ➕ Add Custom Item
+          </button>
+        </div>
+        <div class="search-bar" style="position:relative;">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="editProductSearch" placeholder="Search product to add..." oninput="editSearchProducts(this.value)" autocomplete="off">
+        </div>
+        <div id="editProductResults" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px;display:none;background:var(--bg-card,#12182b);"></div>
+      </div>
+
+      <!-- Items Table -->
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Quotation Items</label>
+        <table class="data-table" id="editItemsTable">
+          <thead><tr><th>Item</th><th style="width:75px;text-align:center;">Warranty</th><th style="width:65px;text-align:center;">Qty</th><th style="width:110px;text-align:right;">Unit Price</th><th style="width:110px;text-align:right;">Total</th><th></th></tr></thead>
+          <tbody id="editItemsTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Discount -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
+        <div class="form-group" style="margin-bottom:0; width:100%; grid-column:span 2;">
+          <label class="form-label">Discount (Rs.)</label>
+          <input type="number" class="form-control" id="edit_disc_amt" min="0" placeholder="0" oninput="editRecalc()">
+        </div>
+      </div>
+
+      <!-- Totals summary -->
+      <div id="editTotals" style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);border-radius:8px;padding:12px;font-size:13px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditedQuotation()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script>
+  requireAuth();
+  let currentPage = 1;
+  let convertingId = null;
+  let debounceTimer;
+
+  // New Quotation state
+  let newQuoItems = [];
+  let newQuoCustTimer;
+  let newQuoProdTimer;
+  let allBranches = [];
+
+  function debounceLoad() { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => loadQuotations(1), 350); }
+
+  async function loadQuotations(page = 1) {
+    currentPage = page;
+    const search = document.getElementById('searchInput').value.trim();
+    const status = document.getElementById('statusFilter').value;
+    const data = await apiFetch(`/quotations?page=${page}&limit=20&search=${encodeURIComponent(search)}&status=${status}`);
+    if (!data?.success) return;
+    renderTable(data.data);
+    renderPagination(data.total, page, 20);
+    updateStats(data.data);
+  }
+
+  function renderTable(rows) {
+    const tbody = document.getElementById('quotationsTbody');
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:30px;">No quotations found</td></tr>'; return; }
+    const statusBadge = s => {
+      const map = { draft:'secondary', sent:'info', accepted:'success', rejected:'danger', expired:'danger', converted:'success' };
+      return `<span class="badge badge-${map[s]||'secondary'}">${s}</span>`;
+    };
+    tbody.innerHTML = rows.map(q => `<tr>
+      <td style="color:var(--accent);font-weight:600;cursor:pointer;" onclick="viewQuotation(${q.id})">${q.quotation_number}</td>
+      <td>${q.customer_name || q.cust_name || '<span class="text-muted">Walk-in</span>'}</td>
+      <td style="font-size:12px;">${formatDate(q.quotation_date)}</td>
+      <td style="font-size:12px;${isExpired(q.valid_until)?'color:var(--red);':''}">${formatDate(q.valid_until)} ${isExpired(q.valid_until)?'⚠️':''}</td>
+      <td style="font-weight:700;">${formatCurrency(q.total)}</td>
+      <td>${statusBadge(q.status)}</td>
+      <td>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="viewQuotation(${q.id})">👁 View</button>
+          <button class="btn btn-ghost btn-sm" onclick="editQuotation(${q.id})">✏️ Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="printQuotation(${q.id})">🖨 Print</button>
+          <button class="btn btn-ghost btn-sm" style="background:rgba(37,211,102,0.15);color:#25D366;" onclick="shareWhatsAppDirect(${q.id})" title="Share via WhatsApp">📲 WhatsApp</button>
+          ${q.status !== 'converted' ? `
+            <button class="btn btn-ghost btn-sm" style="color:var(--green);border:1px solid rgba(0,255,136,0.3);" onclick="openConvert(${q.id}, ${q.total})" title="Convert to Invoice">🔄 Convert</button>
+          ` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteQuotation(${q.id})">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  }
+
+  function isExpired(dateStr) {
+    if (!dateStr) return false;
+    return new Date(dateStr) < new Date() ? true : false;
+  }
+
+  function updateStats(rows) {
+    apiFetch('/quotations?limit=1000').then(data => {
+      if (!data?.success) return;
+      const all = data.data;
+      document.getElementById('statTotal').textContent = data.total || all.length;
+      document.getElementById('statPending').textContent = all.filter(q => ['draft','sent','accepted'].includes(q.status)).length;
+      document.getElementById('statConverted').textContent = all.filter(q => q.status === 'converted').length;
+      document.getElementById('statRejected').textContent = all.filter(q => ['rejected','expired'].includes(q.status)).length;
+    });
+  }
+
+  function renderPagination(total, current, limit) {
+    const pages = Math.ceil(total / limit);
+    const el = document.getElementById('pagination');
+    if (pages <= 1) { el.innerHTML = `<span style="font-size:11px;color:var(--text-muted);">${total} quotations</span>`; return; }
+    let html = '';
+    if (current > 1) html += `<button class="page-btn" onclick="loadQuotations(${current-1})">‹</button>`;
+    for (let i = Math.max(1,current-2); i <= Math.min(pages,current+2); i++) html += `<button class="page-btn ${i===current?'active':''}" onclick="loadQuotations(${i})">${i}</button>`;
+    if (current < pages) html += `<button class="page-btn" onclick="loadQuotations(${current+1})">›</button>`;
+    html += `<span style="font-size:11px;color:var(--text-muted);margin-left:8px;">${total} total</span>`;
+    el.innerHTML = html;
+  }
+
+  // ═══════════════════════════════════════════════
+  // NEW QUOTATION MODAL LOGIC
+  // ═══════════════════════════════════════════════
+  async function openNewQuotationModal() {
+    newQuoItems = [];
+    document.getElementById('new_cust_id').value = '';
+    document.getElementById('new_cust_name').value = '';
+    document.getElementById('new_cust_phone').value = '';
+    document.getElementById('new_cust_address').value = '';
+    document.getElementById('newQuoCustSearch').value = '';
+    document.getElementById('newQuoCustResults').style.display = 'none';
+
+    document.getElementById('newProductSearch').value = '';
+    document.getElementById('newProductResults').style.display = 'none';
+
+    document.getElementById('new_disc_pct').value = '';
+    document.getElementById('new_disc_amt').value = '';
+    document.getElementById('new_apply_vat').checked = false;
+    document.getElementById('new_notes').value = '1. Quotation is valid for 30 days.\n2. Standard manufacturer warranty applies.\n3. Installation charges include standard accessories and configuration.';
+
+    // Set Dates
+    const today = new Date().toISOString().split('T')[0];
+    const validDate = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+    document.getElementById('new_date').value = today;
+    document.getElementById('new_valid_until').value = validDate;
+
+    // Load Branches
+    await loadBranchesSelect();
+
+    renderNewQuoItems();
+    newQuoRecalc();
+    openModal('newQuotationModal');
+    setTimeout(() => document.getElementById('new_cust_name')?.focus(), 200);
+  }
+
+  async function loadBranchesSelect() {
+    const sel = document.getElementById('new_branch_id');
+    if (!sel) return;
+    const user = getUser();
+    if (!allBranches.length) {
+      const data = await apiFetch('/users/branches/all');
+      if (data?.success && data.data) allBranches = data.data;
+    }
+    sel.innerHTML = allBranches.map(b => `<option value="${b.id}" ${b.id == user.branch_id ? 'selected' : ''}>${b.name}</option>`).join('');
+    if (!allBranches.length) sel.innerHTML = '<option value="1">Main Branch</option>';
+  }
+
+  // Search existing customers
+  function searchNewQuoCustomers(q) {
+    clearTimeout(newQuoCustTimer);
+    const query = (q || '').trim();
+    const el = document.getElementById('newQuoCustResults');
+    if (!query) { if (el) el.style.display = 'none'; return; }
+    newQuoCustTimer = setTimeout(async () => {
+      const data = await apiFetch(`/customers?search=${encodeURIComponent(query)}&limit=10`);
+      if (!data?.success || !data.data.length) {
+        el.innerHTML = '<div style="padding:10px 14px;color:var(--text-muted);font-size:12px;">No matching customer found. Type details below.</div>';
+        el.style.display = 'block';
+        return;
+      }
+      el.innerHTML = data.data.map(c => `
+        <div data-cid="${c.id}" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(0,212,255,0.08)'" onmouseout="this.style.background=''">
+          <div>
+            <div style="font-weight:600;font-size:13px;">${c.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${c.phone || 'No phone'} ${c.address ? '• ' + c.address : ''}</div>
+          </div>
+          <span style="font-size:10px;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;color:var(--accent);">${c.customer_code || 'CUST'}</span>
+        </div>
+      `).join('');
+      el.querySelectorAll('[data-cid]').forEach(row => {
+        row.addEventListener('click', () => {
+          const cid = parseInt(row.dataset.cid);
+          const c = data.data.find(x => x.id === cid);
+          if (c) {
+            document.getElementById('new_cust_id').value = c.id;
+            document.getElementById('new_cust_name').value = c.name || '';
+            document.getElementById('new_cust_phone').value = c.phone || '';
+            document.getElementById('new_cust_address').value = c.address || '';
+            document.getElementById('newQuoCustSearch').value = '';
+            el.style.display = 'none';
+            showToast(`Customer "${c.name}" selected ✓`, 'success', 1200);
+          }
+        });
+      });
+      el.style.display = 'block';
+    }, 250);
+  }
+
+  // Search products from inventory
+  function searchNewQuoProducts(q) {
+    clearTimeout(newQuoProdTimer);
+    const query = (q || '').trim();
+    const el = document.getElementById('newProductResults');
+    if (!query) { if (el) el.style.display = 'none'; return; }
+    newQuoProdTimer = setTimeout(async () => {
+      const data = await apiFetch(`/products/search/${encodeURIComponent(query)}`);
+      if (!data?.success || !data.data.length) {
+        el.innerHTML = '<div style="padding:10px 14px;color:var(--text-muted);font-size:12px;">No products found in inventory. You can click "+ Add Custom Item" to add any item.</div>';
+        el.style.display = 'block';
+        return;
+      }
+      el.innerHTML = data.data.map(p => `
+        <div data-pid="${p.id}" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);" onmouseover="this.style.background='rgba(0,212,255,0.08)'" onmouseout="this.style.background=''">
+          <img src="${p.image_path || '/img/no-img.svg'}" onerror="this.src='/img/no-img.svg'" style="width:34px;height:34px;object-fit: contain;border-radius:4px;border:1px solid var(--border);flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:13px;">${p.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${p.brand || ''} ${p.model || ''} ${p.sku ? '• SKU: ' + p.sku : ''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;color:var(--accent);font-size:13px;">Rs. ${(p.retail_price||0).toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text-muted);">${p.warranty_months ? p.warranty_months + 'm warranty' : 'No warranty'}</div>
+          </div>
+        </div>
+      `).join('');
+      el.querySelectorAll('[data-pid]').forEach(row => {
+        row.addEventListener('click', () => {
+          const pid = parseInt(row.dataset.pid);
+          const p = data.data.find(x => x.id === pid);
+          if (p) {
+            const existing = newQuoItems.find(i => i.product_id === p.id);
+            if (existing) {
+              existing.quantity += 1;
+            } else {
+              newQuoItems.push({
+                product_id: p.id,
+                name: p.name,
+                brand: p.brand || '',
+                model: p.model || '',
+                warranty_months: p.warranty_months || 0,
+                quantity: 1,
+                unit_price: parseFloat(p.retail_price || 0),
+                vat_applicable: p.vat_applicable || 0,
+                is_custom: false
+              });
+            }
+            document.getElementById('newProductSearch').value = '';
+            el.style.display = 'none';
+            renderNewQuoItems();
+            newQuoRecalc();
+            showToast(`${p.name} added ✓`, 'success', 1200);
+          }
+        });
+      });
+      el.style.display = 'block';
+    }, 250);
+  }
+
+  // Add Custom / Service Item
+  function addNewQuoCustomItem() {
+    newQuoItems.push({
+      product_id: null,
+      name: 'Installation & Wiring Service',
+      brand: '',
+      model: '',
+      warranty_months: 0,
+      quantity: 1,
+      unit_price: 2500,
+      vat_applicable: 0,
+      is_custom: true
+    });
+    renderNewQuoItems();
+    newQuoRecalc();
+    showToast('Custom item added. Edit name & price in the table.', 'info', 2000);
+  }
+
+  function renderNewQuoItems() {
+    const tbody = document.getElementById('newItemsTbody');
+    if (!newQuoItems.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:24px;">No items added yet. Search inventory above or click "+ Add Custom / Service Item".</td></tr>';
+      return;
+    }
+    tbody.innerHTML = newQuoItems.map((item, idx) => {
+      const lineTotal = item.unit_price * item.quantity;
+      item.discount_amount = 0;
+      item.line_total = lineTotal;
+
+      return `<tr>
+        <td>
+          <input type="text" value="${escapeHtml(item.name)}" oninput="updateNewQuoItem(${idx},'name',this.value)" placeholder="Item description" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:5px 8px;font-size:12px;font-weight:600;">
+          ${item.brand || item.model ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${item.brand || ''} ${item.model || ''}</div>` : ''}
+        </td>
+        <td style="text-align:center;">
+          <input type="number" min="0" value="${item.warranty_months || 0}" oninput="updateNewQuoItem(${idx},'warranty_months',this.value)" title="Warranty Months" style="width:55px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:4px;text-align:center;font-size:12px;">
+        </td>
+        <td style="text-align:center;">
+          <input type="number" min="1" value="${item.quantity}" oninput="updateNewQuoItem(${idx},'quantity',this.value)" style="width:55px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:4px;text-align:center;font-size:12px;">
+        </td>
+        <td style="text-align:right;">
+          <input type="number" min="0" step="0.01" value="${item.unit_price}" oninput="updateNewQuoItem(${idx},'unit_price',this.value)" style="width:95px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:4px;text-align:right;font-size:12px;">
+        </td>
+        <td style="text-align:right;font-weight:700;color:var(--accent);font-size:13px;">
+          ${formatCurrency(lineTotal)}
+        </td>
+        <td style="text-align:center;">
+          <button type="button" onclick="removeNewQuoItem(${idx})" style="background:rgba(255,71,87,0.12);border:1px solid rgba(255,71,87,0.3);color:var(--red);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:12px;">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function updateNewQuoItem(idx, field, val) {
+    if (!newQuoItems[idx]) return;
+    if (field === 'quantity') newQuoItems[idx].quantity = Math.max(1, parseInt(val) || 1);
+    else if (field === 'unit_price') newQuoItems[idx].unit_price = Math.max(0, parseFloat(val) || 0);
+    else if (field === 'warranty_months') newQuoItems[idx].warranty_months = Math.max(0, parseInt(val) || 0);
+    else newQuoItems[idx][field] = val;
+
+    // Recalculate without re-rendering active input if typing
+    newQuoItems[idx].discount_amount = 0;
+    newQuoItems[idx].line_total = newQuoItems[idx].unit_price * newQuoItems[idx].quantity;
+    newQuoRecalc();
+  }
+
+  function removeNewQuoItem(idx) {
+    newQuoItems.splice(idx, 1);
+    renderNewQuoItems();
+    newQuoRecalc();
+  }
+
+  function newQuoRecalc() {
+    let subtotal = 0;
+    newQuoItems.forEach(item => {
+      const lineTotal = item.unit_price * item.quantity;
+      item.discount_amount = 0;
+      item.line_total = lineTotal;
+      subtotal += lineTotal;
+    });
+
+    const discFixed = parseFloat(document.getElementById('new_disc_amt')?.value) || 0;
+    const discountApplied = discFixed;
+
+    const applyVat = document.getElementById('new_apply_vat')?.checked;
+    const vat = applyVat ? (subtotal - discountApplied) * 0.18 : 0;
+    const grandTotal = Math.max(0, subtotal - discountApplied + vat);
+
+    document.getElementById('newSumSubtotal').textContent = formatCurrency(subtotal);
+    document.getElementById('newSumDiscount').textContent = `- ${formatCurrency(discountApplied)}`;
+    document.getElementById('newSumVat').textContent = formatCurrency(vat);
+    document.getElementById('newSumGrandTotal').textContent = formatCurrency(grandTotal);
+
+    // Update row total cells in table
+    const tbody = document.getElementById('newItemsTbody');
+    if (tbody && tbody.children.length === newQuoItems.length) {
+      newQuoItems.forEach((item, idx) => {
+        const row = tbody.children[idx];
+        if (row && row.children[5]) {
+          row.children[5].textContent = formatCurrency(item.line_total);
+        }
+      });
+    }
+  }
+
+  async function saveNewQuotation(andPrint = false) {
+    const custName = document.getElementById('new_cust_name').value.trim();
+    if (!custName) {
+      showToast('Please enter customer name', 'error');
+      document.getElementById('new_cust_name').focus();
+      return;
+    }
+    if (!newQuoItems.length) {
+      showToast('Please add at least one item to the quotation', 'error');
+      return;
+    }
+
+    const discPct = parseFloat(document.getElementById('new_disc_pct')?.value) || 0;
+    const discFixed = parseFloat(document.getElementById('new_disc_amt')?.value) || 0;
+    const applyVat = document.getElementById('new_apply_vat')?.checked;
+    const branchId = parseInt(document.getElementById('new_branch_id')?.value) || getUser()?.branch_id || 1;
+
+    const payload = {
+      customer_id: document.getElementById('new_cust_id').value ? parseInt(document.getElementById('new_cust_id').value) : null,
+      customer_name: custName,
+      customer_phone: document.getElementById('new_cust_phone').value.trim() || null,
+      customer_address: document.getElementById('new_cust_address').value.trim() || null,
+      branch_id: branchId,
+      quotation_date: document.getElementById('new_date').value || new Date().toISOString().split('T')[0],
+      valid_until: document.getElementById('new_valid_until').value || null,
+      discount_amount: discFixed,
+      vat_rate: applyVat ? 18 : 0,
+      notes: document.getElementById('new_notes').value.trim() || null,
+      items: newQuoItems.map(item => ({
+        product_id: item.product_id || null,
+        name: item.name,
+        brand: item.brand || null,
+        model: item.model || null,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        discount_percent: item.discount_percent,
+        discount_amount: item.discount_amount,
+        line_total: item.line_total,
+        vat_applicable: applyVat ? 1 : 0,
+        warranty_months: item.warranty_months || 0
+      }))
+    };
+
+    const res = await apiFetch('/quotations', { method: 'POST', body: payload });
+    if (res?.success) {
+      showToast(`✅ Quotation ${res.data.quotation_number} created successfully!`, 'success', 3500);
+      closeModal('newQuotationModal');
+      loadQuotations(1);
+      if (andPrint) {
+        printQuotation(res.data.id);
+      }
+    } else {
+      showToast(res?.message || 'Failed to create quotation', 'error');
+    }
+  }
+
+  // Close search results when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#newQuoCustSearch') && !e.target.closest('#newQuoCustResults')) {
+      const el = document.getElementById('newQuoCustResults');
+      if (el) el.style.display = 'none';
+    }
+    if (!e.target.closest('#newProductSearch') && !e.target.closest('#newProductResults')) {
+      const el = document.getElementById('newProductResults');
+      if (el) el.style.display = 'none';
+    }
+    if (!e.target.closest('#editProductSearch') && !e.target.closest('#editProductResults')) {
+      const el = document.getElementById('editProductResults');
+      if (el) el.style.display = 'none';
+    }
+  });
+
+  // ═══════════════════════════════════════════════
+  // VIEW QUOTATION
+  // ═══════════════════════════════════════════════
+  async function viewQuotation(id) {
+    const data = await apiFetch(`/quotations/${id}`);
+    if (!data?.success) return;
+    const q = data.data;
+    const items = q.items || [];
+    const s = q.settings || {};
+
+    document.getElementById('viewModalTitle').textContent = `${q.quotation_number} — ${q.status.toUpperCase()}`;
+    document.getElementById('viewModalContent').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Quotation Info</div>
+          <div><b>Number:</b> ${q.quotation_number}</div>
+          <div><b>Date:</b> ${formatDate(q.quotation_date)}</div>
+          <div><b>Valid Until:</b> <span style="color:${isExpired(q.valid_until)?'var(--red)':'var(--green)'};">${formatDate(q.valid_until)}</span></div>
+          <div><b>Branch:</b> ${q.branch_name || 'Main Branch'}</div>
+          <div><b>Created by:</b> ${q.created_by || '-'}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Customer</div>
+          <div><b>Name:</b> ${q.customer_name || q.cust_name || 'Walk-in'}</div>
+          <div><b>Phone:</b> ${q.customer_phone || q.cust_phone || '-'}</div>
+          <div><b>Address:</b> ${q.customer_address || q.cust_address || '-'}</div>
+        </div>
+      </div>
+      <table class="data-table" style="margin-bottom:12px;">
+        <thead><tr><th>Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Unit Price</th><th style="text-align:right;">Total</th></tr></thead>
+        <tbody>
+          ${items.map(i => `<tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <img src="${i.image_path || '/img/no-img.svg'}" onerror="this.src='/img/no-img.svg'" style="width:36px;height:36px;object-fit: contain;border-radius:6px;border:1px solid var(--border);flex-shrink:0;">
+                <div>
+                  <div style="font-weight:600;">${i.product_name}</div>
+                  <div style="font-size:10px;color:var(--text-muted);">${i.brand||''} ${i.model||''}</div>
+                  ${i.warranty_months>0?`<div style="font-size:10px;color:var(--accent);margin-top:2px;">⚙ ${i.warranty_months}m warranty</div>`:''}
+                </div>
+              </div>
+            </td>
+            <td style="text-align:center;">${i.quantity}</td>
+            <td style="text-align:right;">${formatCurrency(i.unit_price)}</td>
+            <td style="text-align:right;font-weight:700;color:var(--accent);">${formatCurrency(i.line_total)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="max-width:320px;margin-left:auto;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:8px;padding:12px;">
+
+        ${q.discount_amount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;color:var(--orange);"><span>Discount</span><span>- ${formatCurrency(q.discount_amount)}</span></div>` : ''}
+        ${q.vat_amount > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;"><span>VAT (${q.vat_rate}%)</span><span>${formatCurrency(q.vat_amount)}</span></div>` : ''}
+        <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;color:var(--accent);border-top:1px solid var(--border);padding-top:6px;margin-top:4px;"><span>TOTAL</span><span>${formatCurrency(q.total)}</span></div>
+      </div>
+      ${q.notes ? `<div style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:13px;"><b>Notes:</b> ${escapeHtml(q.notes)}</div>` : ''}`;
+
+    window.currentViewQuotation = q;
+    
+    const footer = document.getElementById('viewModalFooter');
+    footer.innerHTML = `
+      <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+      <button class="btn btn-ghost" onclick="printQuotation(${q.id})">🖨 Print</button>
+      <button class="btn btn-secondary" style="background:#25D366;color:#fff;border:none;" onclick="sendWhatsAppQuotation()">📲 WhatsApp</button>
+      ${q.status !== 'converted' ? `
+        <button class="btn btn-primary" onclick="closeModal('viewModal'); openConvert(${q.id}, ${q.total});">🔄 Convert to Invoice</button>
+      ` : ''}
+      ${q.status !== 'converted' && q.status !== 'rejected' ? `
+        <select id="statusChanger" class="form-control" style="width:140px;" onchange="updateStatus(${q.id}, this.value)">
+          <option value="">Change Status...</option>
+          <option value="draft">Draft</option>
+          <option value="sent">Sent to Customer</option>
+          <option value="accepted">Accepted</option>
+          <option value="rejected">Rejected</option>
+          <option value="expired">Expired</option>
+        </select>` : ''}`;
+    openModal('viewModal');
+  }
+
+  async function updateStatus(id, status) {
+    if (!status) return;
+    const data = await apiFetch(`/quotations/${id}`, { method: 'PUT', body: { status } });
+    if (data?.success) { showToast('Status updated', 'success'); closeModal('viewModal'); loadQuotations(currentPage); }
+    else showToast(data?.message || 'Failed', 'error');
+  }
+
+  function openConvert(id, total) {
+    convertingId = id;
+    document.getElementById('convTotal').textContent = formatCurrency(total);
+    document.getElementById('convAmountPaid').value = Number(total).toFixed(2);
+    openModal('convertModal');
+  }
+
+  async function confirmConvert() {
+    if (!convertingId) return;
+    const payMethod = document.getElementById('convPayMethod').value;
+    const amountPaid = parseFloat(document.getElementById('convAmountPaid').value) || 0;
+    const data = await apiFetch(`/quotations/${convertingId}/convert`, { method: 'POST', body: { payment_method: payMethod, amount_paid: amountPaid } });
+    if (data?.success) {
+      showToast(`✅ Invoice ${data.data.invoiceNumber} created!`, 'success', 5000);
+      closeModal('convertModal');
+      loadQuotations(currentPage);
+      if (confirm(`Invoice ${data.data.invoiceNumber} created successfully!\nPrint invoice now?`)) {
+        window.open(`/pos.html?print=${data.data.invoiceId}`, '_blank');
+      }
+    } else showToast(data?.message || 'Failed to convert quotation', 'error');
+  }
+
+  async function deleteQuotation(id) {
+    const ok = await confirmDialog('Delete this quotation? This cannot be undone.');
+    if (!ok) return;
+    const data = await apiFetch(`/quotations/${id}`, { method: 'DELETE' });
+    if (data?.success) { showToast('Quotation deleted', 'success'); loadQuotations(currentPage); }
+    else showToast(data?.message || 'Failed to delete', 'error');
+  }
+
+  function sendWhatsAppQuotation() {
+    if (!window.currentViewQuotation) return;
+    shareWhatsAppDirect(window.currentViewQuotation.id);
+  }
+
+  async function shareWhatsAppDirect(id) {
+    const data = await apiFetch(`/quotations/${id}`);
+    if (!data?.success) { showToast('Failed to load quotation', 'error'); return; }
+    const q = data.data;
+    const phoneNum = q.customer_phone || q.cust_phone || '';
+    if (!phoneNum) {
+      showToast('No phone number available for this customer.', 'error');
+      return;
+    }
+    let phone = phoneNum.replace(/\D/g, '');
+    if (phone.startsWith('0')) phone = '94' + phone.substring(1);
+    else if (!phone.startsWith('94')) phone = '94' + phone;
+
+    const msg = `Hello! Your quotation (${q.quotation_number}) for Rs. ${Number(q.total).toLocaleString()} has been prepared by ENQOVA SMART LIFE.\nValid until: ${q.valid_until}\nThank you for your inquiry!`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  async function printQuotation(id) {
+    const data = await apiFetch(`/quotations/${id}`);
+    if (!data?.success) { showToast('Failed to load', 'error'); return; }
+    const q = data.data;
+    const s = q.settings || {};
+    const itemsHtml = (q.items||[]).map(i => `<tr>
+      <td style="padding:7px 8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="${i.image_path || '/img/no-img.svg'}" onerror="this.src='/img/no-img.svg'" style="width:40px;height:40px;object-fit: contain;border-radius:4px;border:1px solid #eee;flex-shrink:0;">
+          <div>
+            <div style="font-weight:bold;">${i.product_name}${i.brand?' - '+i.brand:''} ${i.model||''}</div>
+            ${i.description ? `<div style="font-size:11px;color:#666;margin-top:2px;">${i.description}</div>` : ''}
+            ${i.warranty_months>0?'<small style="color:#666">⚙ '+i.warranty_months+'m warranty</small>':''}
+          </div>
+        </div>
+      </td>
+      <td style="padding:7px 8px;text-align:center;">${i.quantity}</td>
+      <td style="padding:7px 8px;text-align:right;">Rs.${Number(i.unit_price).toFixed(2)}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:bold;">Rs.${Number(i.line_total).toFixed(2)}</td>
+    </tr>`).join('');
+    const win = window.open('','_blank','width=820,height=650');
+    if (!win) { showToast('Allow popups to print', 'warning'); return; }
+    win.document.write(`<!DOCTYPE html><html><head><title>Quotation ${q.quotation_number}</title><style>
+*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:13px;padding:20px;color:#000;}
+.hdr{text-align:center;border-bottom:2px solid #003366;padding-bottom:12px;margin-bottom:14px;}
+.co-name{font-size:24px;font-weight:bold;color:#003366;}.co-sub{font-size:11px;color:#555;margin-top:3px;}
+.quo-badge{display:inline-block;background:#f0a500;color:#fff;font-size:18px;font-weight:bold;padding:6px 20px;border-radius:6px;margin:10px 0;}
+.meta{display:flex;justify-content:space-between;margin-bottom:12px;}
+.meta-box{background:#f5f5f5;border:1px solid #ddd;border-radius:6px;padding:8px 14px;font-size:12px;}
+table{width:100%;border-collapse:collapse;margin-bottom:14px;}
+thead th{background:#003366;color:#fff;padding:8px;font-size:11px;text-align:left;}
+tbody tr:nth-child(even){background:#f9f9f9;}tbody td{border-bottom:1px solid #eee;}
+.totals{margin-left:auto;width:260px;}.totals td{padding:5px 10px;font-size:12px;}
+.totals tr:last-child{background:#003366;color:#fff;font-weight:bold;font-size:15px;}
+.validity{background:#fff3cd;border:1px solid #f0a500;border-radius:6px;padding:8px 14px;font-size:12px;margin-bottom:12px;}
+.footer{text-align:center;border-top:1px solid #ccc;margin-top:20px;padding-top:10px;font-size:11px;color:#666;}
+.sig{display:flex;justify-content:space-between;margin-top:30px;}
+.sig div{border-top:1px solid #333;padding-top:4px;min-width:160px;text-align:center;font-size:12px;}
+@media print{.no-print{display:none} @page { margin: 0; } body { padding: 10mm; } }
+</style></head><body>
+<div class="hdr" style="border-bottom:none; padding-bottom:0;"><img src="/img/INV%202.jpg" style="width:100%; max-height:220px; object-fit:contain; margin-bottom:8px;" alt="ENQOVA"></div>
+<div style="text-align:center;margin-bottom:12px;"><div class="quo-badge">QUOTATION</div></div>
+<div class="meta">
+  <div class="meta-box"><b>Quotation #:</b> ${q.quotation_number}<br><b>Date:</b> ${formatDate(q.quotation_date)}<br><b>Branch:</b> ${q.branch_name || 'Main Branch'}</div>
+  <div class="meta-box"><b>Customer:</b> ${q.customer_name||q.cust_name||'Walk-in'}<br><b>Phone:</b> ${q.customer_phone||q.cust_phone||'-'}<br><b>Address:</b> ${q.customer_address||q.cust_address||'-'}</div>
+</div>
+
+<table><thead><tr><th>Product / Description</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Unit Price</th><th style="text-align:right;">Total</th></tr></thead>
+<tbody>${itemsHtml}</tbody></table>
+<table class="totals">
+
+  ${q.discount_amount > 0 ? `<tr><td>Discount</td><td style="text-align:right;">- Rs.${Number(q.discount_amount).toFixed(2)}</td></tr>` : ''}
+  ${q.vat_amount > 0 ? `<tr><td>VAT (${q.vat_rate}%)</td><td style="text-align:right;">Rs.${Number(q.vat_amount).toFixed(2)}</td></tr>` : ''}
+  <tr><td>GRAND TOTAL</td><td style="text-align:right;">Rs.${Number(q.total).toFixed(2)}</td></tr>
+</table>
+${q.notes?`<div style="border:1px solid #ddd;border-radius:6px;padding:10px;font-size:12px;margin-bottom:14px;"><b>Notes:</b> ${escapeHtml(q.notes)}</div>`:''}
+<div style="margin-top:16px;border:1px solid #003366;border-radius:6px;overflow:hidden;font-size:11px;margin-bottom:14px;">
+  <div style="background:#003366;color:#fff;font-weight:bold;padding:6px 12px;letter-spacing:0.5px;">WARRANTY DISCLAIMER</div>
+  <div style="padding:10px 12px;line-height:1.6;color:#222;">
+    We are stringent on detailing &amp; the quality, functionality, and service of the products with a comprehensive warranty we offer herein; further, we would provide an extensive customer service after the sale in the business.<br><br>
+    The security system recommended by ENQOVA SMART LIFE(PVT)LTD to the customer under a stipulated agreement or a quotation is covered with an official warranty effective from the date of Installation. Our product is also covered with a manufacturer's warranty.
+  </div>
+</div>
+<div style="margin-top:0;border:1px solid #003366;border-radius:6px;overflow:hidden;font-size:11px;margin-bottom:16px;">
+  <div style="background:#003366;color:#fff;font-weight:bold;padding:6px 12px;letter-spacing:0.5px;">TERMS AND CONDITIONS</div>
+  <div style="padding:10px 12px;line-height:1.7;color:#222;">
+    <b>Quotation validity period:</b> 3 Days<br>
+    <b>Availability:</b> Before placing the order, please check the Availability.<br>
+    <b>After Sales Service:</b> Please kindly note that there will be a minimal charge for a visit to be paid; this will be implemented within or upon termination of warranty (This is upon request).<br>
+    <b>Delivery:</b> Courier / Delivery / Transport charges are to be borne by the customer. Cash on Delivery is not available.<br>
+    <b>Wiring Charges for Installation:</b> Wiring charges are subject to change according to distance and place. The customer shall agree to pay additional wiring charges appropriately.
+  </div>
+</div>
+<div class="sig"><div>Customer Signature</div><div>Authorized Signature</div></div>
+<div class="footer">${s.footer_text||'Thank you for your interest in ENQOVA SMART LIFE!'}<br>This is a quotation only — not a tax invoice.</div>
+<script>setTimeout(()=>{window.print();},500);<\/script></body></html>`);
+    win.document.close();
+  }
+
+  // ═══════════════════════════════════════════════
+  // EDIT QUOTATION
+  // ═══════════════════════════════════════════════
+  let editItems = [];
+  let editQuoId = null;
+  let editSearchTimer;
+  let _editProducts = [];
+
+  async function editQuotation(id) {
+    editQuoId = id;
+    const data = await apiFetch(`/quotations/${id}`);
+    if (!data?.success) { showToast('Failed to load quotation', 'error'); return; }
+    const q = data.data;
+
+    // Populate fields
+    document.getElementById('editQuoNum').textContent = q.quotation_number;
+    document.getElementById('edit_cust_name').value = q.customer_name || q.cust_name || '';
+    document.getElementById('edit_cust_phone').value = q.customer_phone || q.cust_phone || '';
+    document.getElementById('edit_cust_address').value = q.customer_address || q.cust_address || '';
+    document.getElementById('edit_valid_until').value = q.valid_until || '';
+    document.getElementById('edit_status').value = q.status || 'draft';
+    document.getElementById('edit_notes').value = q.notes || '';
+    document.getElementById('edit_disc_amt').value = q.discount_amount > 0 ? q.discount_amount : '';
+    document.getElementById('editProductSearch').value = '';
+    document.getElementById('editProductResults').style.display = 'none';
+
+    // Load items
+    editItems = (q.items || []).map(i => ({
+      product_id: i.product_id,
+      name: i.product_name,
+      brand: i.brand || '',
+      model: i.model || '',
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      discount_amount: 0,
+      line_total: i.line_total,
+      vat_applicable: 1,
+      warranty_months: i.warranty_months || 0
+    }));
+
+    renderEditItems();
+    editRecalc();
+    openModal('editModal');
+  }
+
+  function addEditQuoCustomItem() {
+    editItems.push({
+      product_id: null,
+      name: 'Custom Service / Item',
+      brand: '',
+      model: '',
+      quantity: 1,
+      unit_price: 1500,
+      discount_amount: 0,
+      line_total: 1500,
+      vat_applicable: 1,
+      warranty_months: 0
+    });
+    renderEditItems();
+    editRecalc();
+  }
+
+  function renderEditItems() {
+    const tbody = document.getElementById('editItemsTbody');
+    if (!editItems.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:16px;">No items — search product above or add custom item</td></tr>';
+      editRecalc();
+      return;
+    }
+    tbody.innerHTML = editItems.map((item, idx) => {
+      const lineTotal = item.unit_price * item.quantity;
+      editItems[idx].discount_amount = 0;
+      editItems[idx].line_total = lineTotal;
+      return `<tr>
+        <td>
+          <input type="text" value="${escapeHtml(item.name)}" oninput="updateEditItem(${idx},'name',this.value)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:4px;font-size:12px;font-weight:600;">
+          ${item.brand || item.model ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${item.brand || ''} ${item.model || ''}</div>` : ''}
+        </td>
+        <td><input type="number" min="0" value="${item.warranty_months || 0}" oninput="updateEditItem(${idx},'warranty_months',this.value)" style="width:54px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:4px;text-align:center;font-size:12px;"></td>
+        <td><input type="number" min="1" value="${item.quantity}" oninput="updateEditItem(${idx},'quantity',this.value)" style="width:54px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:4px;text-align:center;font-size:12px;"></td>
+        <td><input type="number" min="0" step="0.01" value="${item.unit_price}" oninput="updateEditItem(${idx},'unit_price',this.value)" style="width:90px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:4px;text-align:right;font-size:12px;"></td>
+        <td style="font-weight:700;color:var(--accent);text-align:right;">${formatCurrency(lineTotal)}</td>
+        <td style="text-align:center;"><button type="button" onclick="removeEditItem(${idx})" style="background:rgba(255,71,87,0.12);border:1px solid rgba(255,71,87,0.3);color:var(--red);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;">✕</button></td>
+      </tr>`;
+    }).join('');
+    editRecalc();
+  }
+
+  function updateEditItem(idx, field, val) {
+    if (!editItems[idx]) return;
+    if (field === 'quantity') editItems[idx].quantity = Math.max(1, parseInt(val) || 1);
+    else if (field === 'unit_price') editItems[idx].unit_price = Math.max(0, parseFloat(val) || 0);
+    else if (field === 'warranty_months') editItems[idx].warranty_months = Math.max(0, parseInt(val) || 0);
+    else editItems[idx][field] = val;
+
+    editItems[idx].discount_amount = 0;
+    editItems[idx].line_total = editItems[idx].unit_price * editItems[idx].quantity;
+    editRecalc();
+  }
+
+  function removeEditItem(idx) {
+    editItems.splice(idx, 1);
+    renderEditItems();
+  }
+
+  function editRecalc() {
+    const discFixed = parseFloat(document.getElementById('edit_disc_amt')?.value) || 0;
+    let subtotal = 0;
+    editItems.forEach(item => {
+      subtotal += item.unit_price * item.quantity;
+    });
+    const discountApplied = discFixed;
+    const vat = subtotal * 0.18;
+    const total = subtotal - discountApplied + vat;
+    const el = document.getElementById('editTotals');
+    if (el) el.innerHTML = `
+
+      ${discountApplied > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--orange);"><span>Discount</span><span>- ${formatCurrency(discountApplied)}</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>VAT (18%)</span><span>${formatCurrency(vat)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;color:var(--accent);border-top:1px solid var(--border);padding-top:6px;margin-top:4px;"><span>TOTAL</span><span>${formatCurrency(total)}</span></div>`;
+  }
+
+  // Product search inside edit modal
+  function editSearchProducts(q) {
+    clearTimeout(editSearchTimer);
+    const query = (q || '').trim();
+    const el = document.getElementById('editProductResults');
+    if (!query) { if (el) el.style.display = 'none'; return; }
+    editSearchTimer = setTimeout(() => doEditProductSearch(query), 300);
+  }
+
+  async function doEditProductSearch(q) {
+    const data = await apiFetch(`/products/search/${encodeURIComponent(q)}`);
+    const el = document.getElementById('editProductResults');
+    if (!el) return;
+    if (!data?.success || !data.data.length) { el.innerHTML = `<div style="padding:12px;color:var(--text-muted);font-size:12px;">No products found</div>`; el.style.display = 'block'; return; }
+    _editProducts = data.data;
+    el.innerHTML = _editProducts.map((p, idx) => `<div data-pidx="${idx}" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);" onmouseover="this.style.background='rgba(0,212,255,0.05)'" onmouseout="this.style.background=''">
+      <img src="${p.image_path || '/img/no-img.svg'}" onerror="this.src='/img/no-img.svg'" style="width:36px;height:36px;object-fit: contain;border-radius:6px;">
+      <div><div style="font-weight:600;font-size:13px;">${p.name}</div><div style="font-size:11px;color:var(--text-muted);">${p.brand || ''} | Rs.${(p.retail_price||0).toLocaleString()}</div></div>
+    </div>`).join('');
+    el.querySelectorAll('[data-pidx]').forEach(row => {
+      row.addEventListener('click', () => {
+        const pidx = parseInt(row.dataset.pidx);
+        const p = _editProducts[pidx];
+        if (!p) return;
+        const found = editItems.find(i => i.product_id === p.id);
+        if (found) { found.quantity++; }
+        else {
+          editItems.push({ product_id: p.id, name: p.name, brand: p.brand || '', model: p.model || '',
+            quantity: 1, unit_price: p.retail_price || 0, discount_amount: 0,
+            line_total: p.retail_price || 0, vat_applicable: p.vat_applicable || 1, warranty_months: p.warranty_months || 0 });
+        }
+        document.getElementById('editProductSearch').value = '';
+        el.style.display = 'none';
+        renderEditItems();
+        showToast(`${p.name} added`, 'success', 1000);
+      });
+    });
+    el.style.display = 'block';
+  }
+
+  async function saveEditedQuotation() {
+    if (!editQuoId) return;
+    if (!editItems.length) { showToast('Add at least one item', 'error'); return; }
+
+    const discAmt = parseFloat(document.getElementById('edit_disc_amt')?.value) || 0;
+
+    const body = {
+      customer_name: document.getElementById('edit_cust_name').value.trim(),
+      customer_phone: document.getElementById('edit_cust_phone').value.trim(),
+      customer_address: document.getElementById('edit_cust_address')?.value.trim() || null,
+      valid_until: document.getElementById('edit_valid_until').value,
+      status: document.getElementById('edit_status').value,
+      notes: document.getElementById('edit_notes').value.trim(),
+      discount_amount: discAmt,
+      vat_rate: 18,
+      items: editItems.map(item => ({
+        product_id: item.product_id || null,
+        name: item.name, brand: item.brand, model: item.model,
+        quantity: item.quantity, unit_price: item.unit_price,
+        discount_amount: 0,
+        line_total: item.unit_price * item.quantity,
+        vat_applicable: item.vat_applicable, warranty_months: item.warranty_months
+      }))
+    };
+
+    const result = await apiFetch(`/quotations/${editQuoId}`, { method: 'PUT', body });
+    if (result?.success) {
+      showToast('✅ Quotation updated successfully!', 'success', 3000);
+      closeModal('editModal');
+      loadQuotations(currentPage);
+    } else {
+      showToast(result?.message || 'Failed to update', 'error');
+    }
+  }
+
+  loadQuotations(1);
+</script>
+</body>
+</html>

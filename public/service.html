@@ -1,0 +1,218 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Service Center - ENQOVA POS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* Service Center specific styles */
+    .spare-part-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .spare-part-list {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex; justify-content:center; align-items:center; padding: 20px 10px; height: auto;">
+      <img src="/img/logo.png" style="max-width:100%; max-height:140px;" alt="ENQOVA">
+    </div>
+            <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard.html" class="nav-item">Dashboard</a>
+      <a href="/pos.html" class="nav-item">POS / Billing</a>
+      <a href="/invoices.html" class="nav-item">Invoice</a>
+      <a href="/quotations.html" class="nav-item">Quotations</a>
+      <div class="nav-section-label">Inventory</div>
+      <a href="/products.html" class="nav-item">Products</a>
+      <a href="/grn.html" class="nav-item">GRN</a>
+      <a href="/transfers.html" class="nav-item">Transfers</a>
+      <div class="nav-section-label">CRM</div>
+      <a href="/customers.html" class="nav-item">Customers</a>
+      <a href="/warranties.html" class="nav-item">Warranty <span class="nav-badge" id="navWarrantyBadge" style="display:none">0</span></a>
+      <a href="/service.html" class="nav-item active">Service Center</a>
+      <a href="/jobsheets.html" class="nav-item">Job Sheets</a>
+      <div class="nav-section-label">Business</div>
+      <a href="/reports.html" class="nav-item">Reports</a>
+      <a href="/users.html" class="nav-item" id="navUsers">Users</a>
+      <a href="/settings.html" class="nav-item">Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="user-avatar" id="userAvatar">U</div><div class="user-details"><div class="user-name" id="userName">User</div><div class="user-role" id="userRole">cashier</div></div></div>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px; margin-bottom:8px; border:1px solid var(--border);" onclick="toggleTheme()">☀️ / 🌙 Toggle Theme</button>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px;" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+  <div class="main-content">
+    <header class="top-header">
+      <div><div class="header-title">🛠️ Service Center & Repair Job Cards</div></div>
+      <div class="header-actions">
+        <span class="branch-badge" id="headerBranch"></span>
+        <button class="btn btn-primary" onclick="openNewJobModal()">+ New Job Card</button>
+      </div>
+    </header>
+    <div class="page-body">
+      <div class="filter-bar" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom: 20px;">
+        <input type="text" class="form-control" id="jobSearch" placeholder="Search Job #, Customer name or phone..." oninput="debounceLoadJobs()" style="max-width:280px;">
+        <select class="form-control" id="statusFilter" onchange="loadJobs()" style="max-width:160px;">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed (Repaired)</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select class="form-control" id="techFilter" onchange="loadJobs()" style="max-width:180px;">
+          <option value="">All Technicians</option>
+        </select>
+      </div>
+      
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Job Card #</th>
+              <th>Customer</th>
+              <th>Device Details</th>
+              <th>Serial/IMEI</th>
+              <th>Technician</th>
+              <th>Date Created</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="jobsTbody"></tbody>
+        </table>
+      </div>
+      <div id="pagination"></div>
+    </div>
+  </div>
+</div>
+
+<!-- New Repair Job Card Modal -->
+<div class="modal-overlay" id="newJobModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">🛠️ New Repair Job Card</div>
+      <button class="modal-close" onclick="closeModal('newJobModal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 0;">
+      <div class="form-group">
+        <label class="form-label required">Customer Name</label>
+        <input type="text" class="form-control" id="jc_cust_name" placeholder="E.g., John Doe">
+      </div>
+      <div class="form-group">
+        <label class="form-label required">Customer Phone</label>
+        <input type="text" class="form-control" id="jc_cust_phone" placeholder="E.g., 0771234567">
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label required">Device Details (Brand & Model)</label>
+        <input type="text" class="form-control" id="jc_device" placeholder="E.g., Hikvision DS-2CD2T20 IP Camera">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Serial / IMEI Number</label>
+        <input type="text" class="form-control" id="jc_serial" placeholder="E.g., SN-87123A82" style="font-family:monospace;">
+      </div>
+      <div class="form-group">
+        <label class="form-label required">Assign Technician</label>
+        <select class="form-control" id="jc_tech_select"></select>
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label class="form-label required">Issue Description / Fault Details</label>
+        <textarea class="form-control" id="jc_issue" rows="3" placeholder="Describe the device issue..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estimated Cost (Rs.)</label>
+        <input type="number" class="form-control" id="jc_est_cost" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Advance Paid (Rs.)</label>
+        <input type="number" class="form-control" id="jc_advance" value="0" min="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('newJobModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitNewJob()">Create Job Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- View/Detail Repair Job Card Modal -->
+<div class="modal-overlay" id="jobDetailModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="jobDetailTitle">Job Card Details</div>
+      <button class="modal-close" onclick="closeModal('jobDetailModal')">✕</button>
+    </div>
+    <div id="jobDetailContent"></div>
+    <div class="modal-footer" id="jobDetailFooter"></div>
+  </div>
+</div>
+
+<!-- Complete/Resolve Job Card Modal -->
+<div class="modal-overlay" id="completeJobModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">✅ Complete & Resolve Repair Job</div>
+      <button class="modal-close" onclick="closeModal('completeJobModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding: 16px 0;">
+      <input type="hidden" id="comp_job_id">
+      
+      <div class="form-group">
+        <label class="form-label required">Resolution / Work Done Notes</label>
+        <textarea class="form-control" id="comp_notes" rows="3" placeholder="Describe what was repaired/replaced..."></textarea>
+      </div>
+      
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div class="form-group">
+          <label class="form-label">Estimated Cost (Rs.)</label>
+          <input type="text" class="form-control" id="comp_est_cost_lbl" readonly style="opacity:0.7">
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Final Cost (Rs.)</label>
+          <input type="number" class="form-control" id="comp_final_cost" min="0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Spare Parts Used (Deducted from POS Stock)</label>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <input type="text" class="form-control" id="spareSearch" placeholder="Search product to add as spare..." oninput="searchSpares()" style="max-width:320px;">
+          <div id="spareSuggestions" style="position:absolute; background:#121824; border:1px solid #23304a; border-radius:4px; max-height:200px; overflow-y:auto; display:none; z-index:100; margin-top:40px; width:320px;"></div>
+        </div>
+        
+        <div class="spare-part-list">
+          <div style="font-weight:600; font-size:12px; color:var(--text-muted); display:grid; grid-template-columns: 2fr 1fr 1fr 40px; gap:8px; margin-bottom:8px;">
+            <div>Item Name</div>
+            <div>Qty</div>
+            <div>Unit Price</div>
+            <div></div>
+          </div>
+          <div id="selectedSparesContainer"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('completeJobModal')">Cancel</button>
+      <button class="btn btn-success" onclick="submitCompleteJob()">✅ Complete Repair</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/service.js"></script>
+</body>
+</html>

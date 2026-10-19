@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Users - ENQOVA POS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex; justify-content:center; align-items:center; padding: 20px 10px; height: auto;">
+      <img src="/img/logo.png" style="max-width:100%; max-height:140px;" alt="ENQOVA">
+    </div>
+                <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard.html" class="nav-item">Dashboard</a>
+      <a href="/pos.html" class="nav-item">POS / Billing</a>
+      <a href="/invoices.html" class="nav-item">Invoice</a>
+      <a href="/quotations.html" class="nav-item">Quotations</a>
+      <div class="nav-section-label">Inventory</div>
+      <a href="/products.html" class="nav-item">Products</a>
+      <a href="/grn.html" class="nav-item">GRN</a>
+      <a href="/transfers.html" class="nav-item">Transfers</a>
+      <div class="nav-section-label">CRM</div>
+      <a href="/customers.html" class="nav-item">Customers</a>
+      <a href="/warranties.html" class="nav-item">Warranty <span class="nav-badge" id="navWarrantyBadge" style="display:none">0</span></a>
+      <a href="/service.html" class="nav-item">Service Center</a>
+      <a href="/jobsheets.html" class="nav-item">Job Sheets</a>
+      <div class="nav-section-label">Business</div>
+      <a href="/reports.html" class="nav-item">Reports</a>
+      <a href="/users.html" class="nav-item active" id="navUsers">Users</a>
+      <a href="/settings.html" class="nav-item">Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="user-avatar" id="userAvatar">A</div><div class="user-details"><div class="user-name" id="userName">Admin</div><div class="user-role" id="userRole">admin</div></div></div>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px; margin-bottom:8px; border:1px solid var(--border);" onclick="toggleTheme()">☀️ / 🌙 Toggle Theme</button>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px;" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+  <div class="main-content">
+    <header class="top-header">
+      <div><div class="header-title">👤 User Management</div></div>
+      <div class="header-actions"><span class="branch-badge" id="headerBranch"></span><button class="btn btn-primary" onclick="openAddUser()">+ Add User</button></div>
+    </header>
+    <div class="page-body">
+      <div class="tabs"><button class="tab-btn active" onclick="switchTab('users',this)">👤 Users</button><button class="tab-btn" onclick="switchTab('branches',this)">🏢 Branches</button></div>
+
+      <!-- Users Tab -->
+      <div class="tab-panel active" id="tab-users">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
+            <input type="checkbox" id="showInactive" onchange="loadUsers()"> Show deactivated users
+          </label>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Branch</th><th>Last Login</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Branches Tab -->
+      <div class="tab-panel" id="tab-branches">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary btn-sm" onclick="openAddBranch()">+ Add Branch</button></div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Branch Name</th><th>Address</th><th>Phone</th><th>Manager</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="branchesTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="userModalTitle">Add User</div><button class="modal-close" onclick="closeModal('userModal')">✕</button></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label required">Full Name</label><input type="text" class="form-control" id="u_name"></div>
+      <div class="form-group"><label class="form-label required">Username</label><input type="text" class="form-control" id="u_username"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" id="u_email"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label required">Role</label><select class="form-control" id="u_role"><option value="cashier">Cashier</option><option value="manager">Manager</option><option value="admin">Admin</option><option value="accountant">Accountant</option><option value="sales_executive">Sales Executive</option><option value="technician">Technician</option></select></div>
+      <div class="form-group"><label class="form-label">Branch</label><select class="form-control" id="u_branch"></select></div>
+    </div>
+    <div class="form-group"><label class="form-label" id="passLabel">Password</label><input type="password" class="form-control" id="u_password" placeholder="Leave blank to keep current"></div>
+    <div class="form-group" id="permissionsGroup">
+      <label class="form-label">User Access Permissions</label>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; font-size: 13px;">
+        <label><input type="checkbox" name="u_perms" value="dashboard"> Dashboard</label>
+        <label><input type="checkbox" name="u_perms" value="pos"> POS / Billing</label>
+        <label><input type="checkbox" name="u_perms" value="invoices"> Invoices</label>
+        <label><input type="checkbox" name="u_perms" value="quotations"> Quotations</label>
+        <label><input type="checkbox" name="u_perms" value="products"> Products</label>
+        <label><input type="checkbox" name="u_perms" value="grn"> GRN</label>
+        <label><input type="checkbox" name="u_perms" value="transfers"> Transfers</label>
+        <label><input type="checkbox" name="u_perms" value="customers"> Customers</label>
+        <label><input type="checkbox" name="u_perms" value="warranties"> Warranties</label>
+        <label><input type="checkbox" name="u_perms" value="service"> Service Center</label>
+        <label><input type="checkbox" name="u_perms" value="jobsheets"> Job Sheets</label>
+        <label><input type="checkbox" name="u_perms" value="reports"> Reports</label>
+        <label><input type="checkbox" name="u_perms" value="users"> Users</label>
+        <label><input type="checkbox" name="u_perms" value="settings"> Settings</label>
+      </div>
+    </div>
+    <input type="hidden" id="u_id">
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('userModal')">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Save User</button></div>
+  </div>
+</div>
+
+<!-- Add/Edit Branch Modal -->
+<div class="modal-overlay" id="branchModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="branchModalTitle">Add Branch</div><button class="modal-close" onclick="closeModal('branchModal')">✕</button></div>
+    <div class="form-group"><label class="form-label required">Branch Name</label><input type="text" class="form-control" id="b_name"></div>
+    <div class="form-group"><label class="form-label">Address</label><textarea class="form-control" id="b_address" rows="2"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-control" id="b_phone"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" id="b_email"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Manager Name</label><input type="text" class="form-control" id="b_manager"></div>
+    <input type="hidden" id="b_id">
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('branchModal')">Cancel</button><button class="btn btn-primary" onclick="saveBranch()">Save Branch</button></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script src="/js/users.js"></script>
+</body>
+</html>

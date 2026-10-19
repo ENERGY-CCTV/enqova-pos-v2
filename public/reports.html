@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Reports - ENQOVA POS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="display:flex; justify-content:center; align-items:center; padding: 20px 10px; height: auto;">
+      <img src="/img/logo.png" style="max-width:100%; max-height:140px;" alt="ENQOVA">
+    </div>
+                <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="/dashboard.html" class="nav-item">Dashboard</a>
+      <a href="/pos.html" class="nav-item">POS / Billing</a>
+      <a href="/invoices.html" class="nav-item">Invoice</a>
+      <a href="/quotations.html" class="nav-item">Quotations</a>
+      <div class="nav-section-label">Inventory</div>
+      <a href="/products.html" class="nav-item">Products</a>
+      <a href="/grn.html" class="nav-item">GRN</a>
+      <a href="/transfers.html" class="nav-item">Transfers</a>
+      <div class="nav-section-label">CRM</div>
+      <a href="/customers.html" class="nav-item">Customers</a>
+      <a href="/warranties.html" class="nav-item">Warranty <span class="nav-badge" id="navWarrantyBadge" style="display:none">0</span></a>
+      <a href="/service.html" class="nav-item">Service Center</a>
+      <a href="/jobsheets.html" class="nav-item">Job Sheets</a>
+      <div class="nav-section-label">Business</div>
+      <a href="/reports.html" class="nav-item active">Reports</a>
+      <a href="/users.html" class="nav-item" id="navUsers">Users</a>
+      <a href="/settings.html" class="nav-item">Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="user-avatar" id="userAvatar">A</div><div class="user-details"><div class="user-name" id="userName">Admin</div><div class="user-role" id="userRole">admin</div></div></div>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px; margin-bottom:8px; border:1px solid var(--border);" onclick="toggleTheme()">☀️ / 🌙 Toggle Theme</button>
+      <button class="btn btn-ghost w-100 mt-8" style="font-size:12px;" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+  <div class="main-content">
+    <header class="top-header">
+      <div><div class="header-title">📈 Reports & Analytics</div></div>
+      <div class="header-actions">
+        <span class="branch-badge" id="headerBranch"></span>
+        <select class="form-control" id="branchFilter" onchange="loadCurrentReport()" style="max-width:180px;"><option value="">All Branches</option></select>
+        <button class="btn btn-secondary btn-sm" onclick="exportReport()">⬇ Export CSV</button>
+      </div>
+    </header>
+    <div class="page-body">
+      <!-- Date Filter -->
+      <div class="card mb-16">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;align-items:center;"><label class="form-label" style="margin:0;white-space:nowrap;">From:</label><input type="date" class="form-control" id="startDate" style="max-width:160px;"></div>
+          <div style="display:flex;gap:8px;align-items:center;"><label class="form-label" style="margin:0;white-space:nowrap;">To:</label><input type="date" class="form-control" id="endDate" style="max-width:160px;"></div>
+          <button class="btn btn-primary btn-sm" onclick="loadCurrentReport()">🔍 Generate</button>
+          <input type="text" id="reportSearch" class="form-control" placeholder="🔍 Search in current report..." onkeyup="filterCurrentReport()" style="max-width:250px; margin-left:10px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-primary);">
+          <div style="margin-left:auto;display:flex;gap:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="setDateRange('today')">Today</button>
+            <button class="btn btn-secondary btn-sm" onclick="setDateRange('week')">This Week</button>
+            <button class="btn btn-secondary btn-sm active" onclick="setDateRange('month')">This Month</button>
+            <button class="btn btn-secondary btn-sm" onclick="setDateRange('year')">This Year</button>
+          </div>
+        </div>
+      </div>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('sales',this)">📊 Sales</button>
+        <button class="tab-btn" onclick="switchTab('stock',this)">📦 Stock</button>
+        <button class="tab-btn" onclick="switchTab('products',this)">🏆 Top Products</button>
+        <button class="tab-btn" onclick="switchTab('customers',this)">👥 Customers</button>
+        <button class="tab-btn" onclick="switchTab('product-history',this)">🏷️ Product Search</button>
+        <button class="tab-btn" id="profitTab" onclick="switchTab('profit',this)">💰 Profit</button>
+        <button class="tab-btn" id="cashflowTab" onclick="switchTab('cashflow',this)">💵 Cash Flow</button>
+      </div>
+
+      <!-- Sales Tab -->
+      <div class="tab-panel active" id="tab-sales">
+        <div class="stats-grid" id="salesSummary"></div>
+        <div class="card mb-16"><canvas id="salesChart" height="100"></canvas></div>
+        <div class="table-wrapper"><table class="data-table" id="salesDetailTable"><thead><tr><th>Invoice #</th><th>Date</th><th>Customer</th><th>Branch</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead><tbody id="salesTbody"></tbody></table></div>
+      </div>
+
+      <!-- Stock Tab -->
+      <div class="tab-panel" id="tab-stock">
+        <div class="filter-bar"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" id="lowStockOnly" onchange="loadStockReport()"> Low stock only</label></div>
+        <div class="table-wrapper"><table class="data-table"><thead><tr><th>Product</th><th>SKU</th><th>Category</th><th>Branch</th><th>Stock</th><th>Min</th><th>Retail Price</th><th>Status</th></tr></thead><tbody id="stockTbody"></tbody></table></div>
+      </div>
+
+      <!-- Top Products Tab -->
+      <div class="tab-panel" id="tab-products">
+        <div class="card mb-16"><canvas id="productsChart" height="120"></canvas></div>
+        <div class="table-wrapper"><table class="data-table"><thead><tr><th>Rank</th><th>Product</th><th>Qty Sold</th><th>Revenue</th></tr></thead><tbody id="topProductsTbody"></tbody></table></div>
+      </div>
+
+      <!-- Customers Tab -->
+      <div class="tab-panel" id="tab-customers">
+        <div class="table-wrapper"><table class="data-table"><thead><tr><th>Code</th><th>Name</th><th>Phone</th><th>Type</th><th>Invoices</th><th>Total Spent</th><th>Balance</th></tr></thead><tbody id="customersTbody"></tbody></table></div>
+      </div>
+
+      <!-- Product History Tab -->
+      <div class="tab-panel" id="tab-product-history">
+        <div class="card mb-16" style="display:flex;gap:12px;align-items:center;">
+          <input type="text" id="phSearchInput" class="form-control" placeholder="Type product name, model or SKU..." style="flex:1;" onkeyup="if(event.key==='Enter') searchProductHistory()">
+          <button class="btn btn-primary" onclick="searchProductHistory()">🔍 Find</button>
+        </div>
+        <div id="phSearchResults" class="mb-16" style="display:none; max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; background:var(--bg-card);"></div>
+        
+        <div id="phReportContent" style="display:none;">
+          <div class="card mb-16" id="phProductDetails" style="background:rgba(0,212,255,0.05); border-left:4px solid var(--accent); padding:16px;"></div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead><tr><th>Date</th><th>Invoice #</th><th>Customer / Order Info</th><th>Branch</th><th>Qty</th><th>Unit Price</th><th>Line Total</th></tr></thead>
+              <tbody id="phTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Profit Tab -->
+      <div class="tab-panel" id="tab-profit">
+        <div class="alert alert-info">💡 Profit report shows cost vs selling price per product. Admin access only.</div>
+        <div class="stats-grid" id="profitSummary"></div>
+        <div class="table-wrapper"><table class="data-table"><thead><tr><th>Product</th><th>Qty Sold</th><th>Total Cost</th><th>Revenue</th><th>Gross Profit</th><th>Margin</th></tr></thead><tbody id="profitTbody"></tbody></table></div>
+      </div>
+
+      <!-- Cash Flow Tab -->
+      <div class="tab-panel" id="tab-cashflow">
+        <div class="alert alert-info">💡 Cash Flow report displays total cash inflows (sales payments) and outflows (purchases and expenses). Admin access only.</div>
+        <div class="stats-grid" id="cashflowSummary" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div class="card" style="border-left:4px solid var(--green); background:rgba(0,255,157,0.03);"><div class="stats-title">Total Inflows (Payments Received)</div><div class="stats-value" id="cfTotalInflows">Rs. 0.00</div></div>
+          <div class="card" style="border-left:4px solid var(--red); background:rgba(255,0,85,0.03);"><div class="stats-title">Total Outflows (Supplier Costs)</div><div class="stats-value" id="cfTotalOutflows">Rs. 0.00</div></div>
+          <div class="card" style="border-left:4px solid var(--accent); background:rgba(0,212,255,0.03);"><div class="stats-title">Net Cash Flow</div><div class="stats-value" id="cfNetFlow">Rs. 0.00</div></div>
+        </div>
+        <div class="card mb-16"><canvas id="cashflowChart" height="100"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/js/app.js"></script>
+<script src="/js/reports.js"></script>
+</body>
+</html>

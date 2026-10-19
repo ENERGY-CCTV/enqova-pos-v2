@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ENQOVA - Login</title>
+  <meta name="description" content="ENQOVA Point of Sale System - Secure Login">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --accent:#ff9800; --bg:#1a1005; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#e8eaf0; --muted:#8892a4; --green:#00ff9d; --red:#ff4757; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(255,152,0,0.08) 0%,transparent 60%),radial-gradient(ellipse at 70% 70%,rgba(255,152,0,0.05) 0%,transparent 60%);pointer-events:none;}
+    /* Animated grid */
+    .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(255,152,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,152,0,0.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;animation:gridMove 20s linear infinite;}
+    @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+    /* Floating particles */
+    .particles{position:fixed;inset:0;pointer-events:none;overflow:hidden;}
+    .particle{position:absolute;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;}
+    @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:0.6}90%{opacity:0.3}100%{transform:translateY(-10vh) translateX(50px);opacity:0}}
+    /* Login card */
+    .login-wrap{position:relative;z-index:10;width:100%;max-width:420px;padding:20px;}
+    .login-card{background:rgba(25, 15, 10, 0.4);border:1px solid var(--border);border-radius:20px;padding:40px;backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 40px rgba(255,152,0,0.05);}
+    .logo-area{text-align:center;margin-bottom:32px;}
+    .logo-icon{width:72px;height:72px;background:linear-gradient(135deg,#ff9800,#e65100);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:34px;box-shadow:0 0 30px rgba(255,152,0,0.3);}
+    .logo-name{font-size:26px;font-weight:800;color:#fff;letter-spacing:1px;}
+    .logo-sub{font-size:12px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-top:4px;}
+    .form-group{margin-bottom:16px;}
+    .form-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:0.3px;}
+    .form-control{width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 16px;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:all 0.25s;}
+    .form-control:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,152,0,0.15);background:rgba(255,255,255,0.08);}
+    .form-control::placeholder{color:rgba(136,146,164,0.5);}
+    .btn-login{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),#e65100);color:#fff;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:all 0.25s;margin-top:8px;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(255,152,0,0.35);}
+    .btn-login:disabled{opacity:0.6;transform:none;cursor:not-allowed;}
+    .error-msg{background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+    .error-msg.show{display:block;}
+    .version{text-align:center;margin-top:20px;font-size:11px;color:rgba(136,146,164,0.4);}
+    .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .credentials-hint{text-align:center;margin-top:14px;font-size:11px;color:var(--muted);}
+    .credentials-hint span{color:var(--accent);font-weight:600;}
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="particles" id="particles"></div>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="logo-area">
+        <img src="/img/logo.png" style="max-width:280px; max-height:180px; margin:0 auto 10px; display:block;" alt="ENQOVA Logo">
+        <div class="logo-sub">Point of Sale System</div>
+      </div>
+      <div class="error-msg" id="errorMsg"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-control" id="username" placeholder="Enter username" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" placeholder="Enter password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn-login" id="loginBtn">
+          <span id="loginText">Sign In</span>
+          <div class="spinner" id="loginSpinner"></div>
+        </button>
+      </form>
+      <div class="credentials-hint">Default: <span>admin</span> / <span>admin123</span></div>
+    </div>
+    <div class="version">ENQOVA POS v1.0.0 &nbsp;|&nbsp; © 2024 ENQOVA</div>
+  </div>
+  <script>
+    // Particles
+    const pc = document.getElementById('particles');
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.cssText = `left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;`;
+      pc.appendChild(p);
+    }
+    // Redirect if already logged in
+    if (localStorage.getItem('enqova_token')) window.location.href = '/dashboard.html';
+    // Login form
+    document.getElementById('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      const txt = document.getElementById('loginText');
+      const spin = document.getElementById('loginSpinner');
+      const err = document.getElementById('errorMsg');
+      btn.disabled = true; txt.style.display = 'none'; spin.style.display = 'block'; err.classList.remove('show');
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('enqova_token', data.token);
+          localStorage.setItem('enqova_user', JSON.stringify(data.user));
+          window.location.href = '/dashboard.html';
+        } else {
+          err.textContent = data.message || 'Login failed'; err.classList.add('show');
+        }
+      } catch { err.textContent = 'Server error. Is the server running?'; err.classList.add('show'); }
+      finally { btn.disabled = false; txt.style.display = 'block'; spin.style.display = 'none'; }
+    });
+  </script>
+</body>
+</html>

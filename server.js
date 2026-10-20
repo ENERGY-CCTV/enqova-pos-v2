@@ -81,7 +81,7 @@ app.use((err, req, res, next) => {
 });
 
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log('\n🎥 ═══════════════════════════════════════');
     console.log('   ENQOVA POS System v1.0');
     console.log('═══════════════════════════════════════════');

@@ -6,8 +6,12 @@ const { getDB } = require('../database/db');
 router.get('/dashboard', async (req, res) => {
   try {
     const db = getDB();
-    const bid = req.user.branch_id;
-    const branchWhere = (bid && req.user.role !== 'admin') ? `AND branch_id = ${parseInt(bid)}` : '';
+    const isBranchUser = req.user.role !== 'admin' && req.user.branch_id;
+    const bid = isBranchUser ? req.user.branch_id : (req.query.branch_id ? parseInt(req.query.branch_id) : null);
+    const branchWhere = bid ? `AND branch_id = ${parseInt(bid)}` : '';
+    const branchWhereInv = bid ? `AND i.branch_id = ${parseInt(bid)}` : '';
+    const branchWhereQuo = bid ? `AND q.branch_id = ${parseInt(bid)}` : '';
+    const branchWherePs = bid ? `AND ps.branch_id = ${parseInt(bid)}` : '';
     const today = new Date().toISOString().split('T')[0];
     const monthStart = today.substring(0, 8) + '01';
 
@@ -15,7 +19,7 @@ router.get('/dashboard', async (req, res) => {
     const todaySalesPromise = db.query(`SELECT COALESCE(SUM(total),0) as total, COUNT(*)::integer as count FROM invoices WHERE invoice_date = $1 ${branchWhere}`, [today]);
     const monthSalesPromise = db.query(`SELECT COALESCE(SUM(total),0) as total, COUNT(*)::integer as count FROM invoices WHERE invoice_date >= $1 ${branchWhere}`, [monthStart]);
     const stockAlertsPromise = db.query(
-      `SELECT COUNT(*)::integer as cnt FROM product_stock ps LEFT JOIN products p ON ps.product_id = p.id WHERE p.is_active = 1 AND ps.quantity <= ps.min_quantity ${bid && req.user.role !== 'admin' ? 'AND ps.branch_id = ' + parseInt(bid) : ''}`
+      `SELECT COUNT(*)::integer as cnt FROM product_stock ps LEFT JOIN products p ON ps.product_id = p.id WHERE p.is_active = 1 AND ps.quantity <= ps.min_quantity ${branchWherePs}`
     );
     const pendingWarrantiesPromise = db.query(`SELECT COUNT(*)::integer as cnt FROM warranty_claims WHERE status IN ('pending','in_repair') ${branchWhere}`);
     const totalCustomersPromise = db.query('SELECT COUNT(*)::integer as cnt FROM customers WHERE is_active = 1');
@@ -26,7 +30,7 @@ router.get('/dashboard', async (req, res) => {
        LEFT JOIN products p ON ps.product_id = p.id 
        LEFT JOIN branches b ON ps.branch_id = b.id 
        WHERE p.is_active = 1 AND ps.quantity <= ps.min_quantity 
-       ${bid && req.user.role !== 'admin' ? 'AND ps.branch_id = ' + parseInt(bid) : ''} 
+       ${branchWherePs} 
        ORDER BY ps.quantity ASC, p.name 
        LIMIT 10`
     );
@@ -35,7 +39,7 @@ router.get('/dashboard', async (req, res) => {
        FROM invoices i 
        LEFT JOIN customers c ON i.customer_id = c.id 
        LEFT JOIN branches b ON i.branch_id = b.id 
-       WHERE 1=1 ${branchWhere} 
+       WHERE 1=1 ${branchWhereInv} 
        ORDER BY i.created_at DESC LIMIT 10`
     );
     const recentQuotationsPromise = db.query(
@@ -43,7 +47,7 @@ router.get('/dashboard', async (req, res) => {
        FROM quotations q 
        LEFT JOIN customers c ON q.customer_id = c.id 
        LEFT JOIN branches b ON q.branch_id = b.id 
-       WHERE 1=1 ${branchWhere} 
+       WHERE 1=1 ${branchWhereQuo} 
        ORDER BY q.created_at DESC LIMIT 10`
     );
     const last7DaysPromise = db.query(

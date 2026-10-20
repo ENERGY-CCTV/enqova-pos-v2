@@ -49,9 +49,13 @@
     <header class="top-header">
       <div>
         <div class="header-title">Dashboard</div>
-        <div class="header-breadcrumb">Welcome back! Here's what's happening today.</div>
+        <div class="header-breadcrumb" id="headerWelcome">Welcome back! Here's what's happening today.</div>
       </div>
       <div class="header-actions" style="display:flex; gap:12px; align-items:center;">
+        <span class="branch-badge" id="headerBranch"></span>
+        <select class="form-control admin-only" id="dashBranchFilter" onchange="switchDashboardBranch(this.value)" style="display:none; max-width:170px; height:38px; font-size:12px;">
+          <option value="">All Branches</option>
+        </select>
         <!-- Serial Number Search Input -->
         <div style="position:relative; width: 260px;">
           <input type="text" id="serialSearchInput" class="form-control" placeholder="🔍 Search Serial Number..." style="padding-right:36px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); border-radius: 6px; height: 38px; width: 100%;" onkeydown="if(event.key==='Enter') searchSerial(this.value)">
@@ -173,31 +177,62 @@
   setActiveNav();
   let aiHistory = [];
   let salesChart = null;
+  const currentUser = getUser();
+  let selectedBranchId = currentUser.role === 'admin' ? '' : (currentUser.branch_id || '');
+
+  async function initBranchFilter() {
+    if (currentUser.role === 'admin') {
+      const select = document.getElementById('dashBranchFilter');
+      if (select) {
+        select.style.display = '';
+        try {
+          const res = await apiFetch('/settings/branches');
+          if (res?.success && res.data) {
+            select.innerHTML = '<option value="">All Branches</option>' + res.data.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+          }
+        } catch(e) {}
+      }
+    }
+  }
+
+  function switchDashboardBranch(val) {
+    selectedBranchId = val;
+    loadDashboard();
+  }
 
   async function loadDashboard() {
-    const branchId = getUser().branch_id;
-    const data = await apiFetch(`/reports/dashboard${branchId ? '?branch_id='+branchId : ''}`);
+    const data = await apiFetch(`/reports/dashboard${selectedBranchId ? '?branch_id='+selectedBranchId : ''}`);
     if (!data?.success) return;
     const d = data.data;
     
-    // Update branch header dynamically to reflect DB changes without relogin
-    const headerBranch = document.getElementById('headerBranch');
-    if (headerBranch && d.current_branch_name) headerBranch.textContent = d.current_branch_name;
+    // Personalized greeting
+    const welcomeEl = document.getElementById('headerWelcome');
+    if (welcomeEl) {
+      const name = currentUser.full_name || currentUser.username || 'User';
+      const branchDisplay = d.current_branch_name ? ` (${d.current_branch_name})` : '';
+      welcomeEl.textContent = `Welcome back, ${name}! Here's what's happening today${branchDisplay}.`;
+    }
 
-    document.getElementById('todaySales').textContent = formatCurrency(d.today_sales.total);
-    document.getElementById('todayCount').textContent = d.today_sales.count + ' invoices';
-    document.getElementById('monthSales').textContent = formatCurrency(d.month_sales.total);
-    document.getElementById('monthCount').textContent = d.month_sales.count + ' invoices';
-    document.getElementById('stockAlerts').textContent = d.stock_alerts;
+    // Update branch header dynamically
+    const headerBranch = document.getElementById('headerBranch');
+    if (headerBranch && d.current_branch_name) {
+      headerBranch.textContent = d.current_branch_name;
+    }
+
+    document.getElementById('todaySales').textContent = formatCurrency(d.today_sales?.total || 0);
+    document.getElementById('todayCount').textContent = (d.today_sales?.count || 0) + ' invoices';
+    document.getElementById('monthSales').textContent = formatCurrency(d.month_sales?.total || 0);
+    document.getElementById('monthCount').textContent = (d.month_sales?.count || 0) + ' invoices';
+    document.getElementById('stockAlerts').textContent = d.stock_alerts || 0;
     const pwEl = document.getElementById('pendingWarranties') || document.getElementById('pendingWarranty');
-    if (pwEl) pwEl.textContent = d.pending_warranties;
-    document.getElementById('totalCustomers').textContent = d.total_customers;
-    document.getElementById('totalProducts').textContent = d.total_products;
+    if (pwEl) pwEl.textContent = d.pending_warranties || 0;
+    document.getElementById('totalCustomers').textContent = d.total_customers || 0;
+    document.getElementById('totalProducts').textContent = d.total_products || 0;
     if (d.pending_warranties > 0) { const nb = document.getElementById('navWarrantyBadge'); if(nb){nb.textContent = d.pending_warranties; nb.style.display = '';} }
-    renderLowStock(d.low_stock_items);
-    renderRecentInvoices(d.recent_invoices);
-    if (d.recent_quotations) renderRecentQuotations(d.recent_quotations);
-    renderSalesChart(d.last_7_days);
+    renderLowStock(d.low_stock_items || []);
+    renderRecentInvoices(d.recent_invoices || []);
+    if (d.recent_quotations) renderRecentQuotations(d.recent_quotations || []);
+    renderSalesChart(d.last_7_days || []);
   }
 
   function renderLowStock(items) {
@@ -574,6 +609,7 @@ ${inv.customer_name ? `<div style="border:1px solid #ddd;border-radius:6px;paddi
     msgs.scrollTop = msgs.scrollHeight;
   }
 
+  initBranchFilter();
   loadDashboard();
   setInterval(loadDashboard, 60000);
 </script>

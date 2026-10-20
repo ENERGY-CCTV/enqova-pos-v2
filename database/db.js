@@ -13,6 +13,10 @@ require('dotenv').config();
 let isSqliteMode = false;
 let sqliteInstance = null;
 
+const sslConfig = process.env.DB_SSL === 'true' || (process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1')
+  ? { rejectUnauthorized: false }
+  : undefined;
+
 const mysqlPool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -21,7 +25,8 @@ const mysqlPool = mysql.createPool({
   port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
   connectionLimit: 20,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: sslConfig
 });
 
 function getSqliteInstance() {

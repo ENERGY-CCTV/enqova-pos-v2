@@ -20,6 +20,9 @@ npm-debug.log*
 .env
 .env.*
 
-# SQLite WAL and SHM temp files
+# SQLite WAL, SHM temp files and backups
 data/*.db-wal
 data/*.db-shm
+data/*backup*
+scratch/
+

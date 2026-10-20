@@ -80,13 +80,15 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ success: false, message: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log('\n🎥 ═══════════════════════════════════════');
-  console.log('   ENQOVA POS System v1.0');
-  console.log('═══════════════════════════════════════════');
-  console.log(`📡 URL:      http://localhost:${PORT}`);
-  console.log(`📁 Database: PostgreSQL (${process.env.PGHOST || 'localhost'}:${process.env.PGPORT || '5432'}/${process.env.PGDATABASE || 'enqova'})`);
-  console.log('═══════════════════════════════════════════\n');
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log('\n🎥 ═══════════════════════════════════════');
+    console.log('   ENQOVA POS System v1.0');
+    console.log('═══════════════════════════════════════════');
+    console.log(`📡 URL:      http://localhost:${PORT}`);
+    console.log(`📁 Database: PostgreSQL (${process.env.PGHOST || 'localhost'}:${process.env.PGPORT || '5432'}/${process.env.PGDATABASE || 'enqova'})`);
+    console.log('═══════════════════════════════════════════\n');
+  });
+}
 
 module.exports = app;

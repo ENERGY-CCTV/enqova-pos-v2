@@ -39,6 +39,13 @@ function getSqliteInstance() {
         dbPath = oldDbPath;
       }
     }
+    if (process.env.VERCEL) {
+      const tmpDbPath = path.join('/tmp', 'enqova.db');
+      if (!fs.existsSync(tmpDbPath) && fs.existsSync(dbPath)) {
+        try { fs.copyFileSync(dbPath, tmpDbPath); } catch (e) {}
+      }
+      dbPath = tmpDbPath;
+    }
     const dataDir = path.dirname(dbPath);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
